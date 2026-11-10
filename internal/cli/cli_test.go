@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -36,18 +38,38 @@ type harness struct {
 	gitOpts []gittest.Option
 }
 
+// platforms are the operating systems gitpal ships for. Where files live and
+// what a terminal can display differ between them, so tests that touch either
+// run once per platform — on whatever machine the suite runs on, because the
+// platform is part of the injected cli.Env. A Windows-only mistake is then
+// caught on a developer's Mac instead of in CI.
+var platforms = []string{"linux", "darwin", "windows"}
+
+// onEveryPlatform runs fn once per supported platform, each with a fresh harness.
+func onEveryPlatform(t *testing.T, fn func(t *testing.T, h *harness)) {
+	t.Helper()
+	for _, goos := range platforms {
+		t.Run(goos, func(t *testing.T) { fn(t, newHarnessOn(t, goos)) })
+	}
+}
+
+// newHarness returns a harness for the platform the tests run on.
 func newHarness(t *testing.T) *harness {
 	t.Helper()
+	return newHarnessOn(t, runtime.GOOS)
+}
+
+// newHarnessOn returns a harness in which gitpal believes it runs on goos.
+func newHarnessOn(t *testing.T, goos string) *harness {
+	t.Helper()
 	h := &harness{t: t, home: gittest.TempDir(t), cwd: gittest.TempDir(t), secrets: secretstest.NewMemory()}
-	h.vars = map[string]string{
-		"GITPAL_CONFIG":  filepath.Join(h.home, "config.yaml"),
-		"XDG_STATE_HOME": filepath.Join(h.home, "state"),
-	}
+	h.vars = map[string]string{"GITPAL_CONFIG": filepath.Join(h.home, "config.yaml")}
+	h.setStateDir(filepath.Join(h.home, "state"))
 	h.env = cli.Env{
 		Stdin:   strings.NewReader(""),
 		Stdout:  &h.stdout,
 		Stderr:  &h.stderr,
-		GOOS:    runtime.GOOS,
+		GOOS:    goos,
 		Getenv:  func(key string) string { return h.vars[key] },
 		Getwd:   func() (string, error) { return h.cwd, nil },
 		HomeDir: func() (string, error) { return h.home, nil },
@@ -73,11 +95,39 @@ func (h *harness) writeConfig(content string) {
 	require.NoError(h.t, os.WriteFile(h.vars["GITPAL_CONFIG"], []byte(content), 0o600))
 }
 
+// setStateDir points gitpal's per-user state directory, where the log lives,
+// at dir. Every platform names it differently (DECISIONS A-006), and a harness
+// that sets only one name silently tests nothing on the others.
+func (h *harness) setStateDir(dir string) {
+	h.vars["XDG_STATE_HOME"] = dir // Linux, macOS
+	h.vars["LOCALAPPDATA"] = dir   // Windows
+}
+
+// logPath is where gitpal must write its log in this harness.
+func (h *harness) logPath() string {
+	return filepath.Join(h.home, "state", "gitpal", "gitpal.log")
+}
+
 func (h *harness) logFile() string {
 	h.t.Helper()
-	data, err := os.ReadFile(filepath.Join(h.home, "state", "gitpal", "gitpal.log"))
+	data, err := os.ReadFile(h.logPath())
 	require.NoError(h.t, err)
 	return string(data)
+}
+
+// logFiles returns every gitpal.log below the throw-away home directory,
+// wherever it ended up.
+func (h *harness) logFiles() []string {
+	h.t.Helper()
+	var found []string
+	err := filepath.WalkDir(h.home, func(path string, entry fs.DirEntry, err error) error {
+		if err == nil && !entry.IsDir() && entry.Name() == "gitpal.log" {
+			found = append(found, path)
+		}
+		return err
+	})
+	require.NoError(h.t, err)
+	return found
 }
 
 type doctorJSON struct {
@@ -196,20 +246,21 @@ func TestDoctorSpeaksTheConfiguredLanguage(t *testing.T) {
 }
 
 func TestDoctorSeesStoredSecretsWithoutPrintingThem(t *testing.T) {
-	h := newHarness(t)
-	require.NoError(t, h.secrets.Set(secrets.GitHubToken, "ghp_supersecrettoken"))
-	require.NoError(t, h.secrets.Set(secrets.AIKey("anthropic"), "sk-ant-supersecretkey"))
-	h.vars["GITPAL_LOG_LEVEL"] = "debug"
+	onEveryPlatform(t, func(t *testing.T, h *harness) {
+		require.NoError(t, h.secrets.Set(secrets.GitHubToken, "ghp_supersecrettoken"))
+		require.NoError(t, h.secrets.Set(secrets.AIKey("anthropic"), "sk-ant-supersecretkey"))
+		h.vars["GITPAL_LOG_LEVEL"] = "debug"
 
-	out, code := h.doctorJSON("--explain")
+		out, code := h.doctorJSON("--explain")
 
-	assert.Equal(t, cli.ExitOK, code)
-	assert.Equal(t, "ok", statuses(out)["github.auth"])
-	assert.Equal(t, "ok", statuses(out)["ai.key"])
-	for name, text := range map[string]string{"stdout": h.stdout.String(), "stderr": h.stderr.String(), "log": h.logFile()} {
-		assert.NotContains(t, text, "ghp_supersecrettoken", "%s leaks the GitHub token", name)
-		assert.NotContains(t, text, "sk-ant-supersecretkey", "%s leaks the AI key", name)
-	}
+		assert.Equal(t, cli.ExitOK, code)
+		assert.Equal(t, "ok", statuses(out)["github.auth"])
+		assert.Equal(t, "ok", statuses(out)["ai.key"])
+		for name, text := range map[string]string{"stdout": h.stdout.String(), "stderr": h.stderr.String(), "log": h.logFile()} {
+			assert.NotContains(t, text, "ghp_supersecrettoken", "%s leaks the GitHub token", name)
+			assert.NotContains(t, text, "sk-ant-supersecretkey", "%s leaks the AI key", name)
+		}
+	})
 }
 
 func TestDoctorPicksUpTheRepositoryConfig(t *testing.T) {
@@ -252,10 +303,15 @@ func TestWithoutExplainNoCommandsAreShown(t *testing.T) {
 }
 
 func TestColorOnlyGoesToTerminals(t *testing.T) {
+	// What a terminal that understands escape codes looks like to gitpal on
+	// every platform. Without it the cases below would not be colored on
+	// Windows for a reason of their own (the classic console, tested
+	// separately), and the "no color" cases would pass without testing their flag.
+	capable := map[string]string{"TERM": "xterm-256color"}
 	tests := []struct {
 		name      string
 		args      []string
-		vars      map[string]string
+		vars      map[string]string // on top of the capable terminal's
 		terminal  bool
 		wantColor bool
 	}{
@@ -268,13 +324,39 @@ func TestColorOnlyGoesToTerminals(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := newHarness(t)
-			for key, value := range tt.vars {
-				h.vars[key] = value
-			}
-			h.env.IsTerminal = func(io.Writer) bool { return tt.terminal }
+			onEveryPlatform(t, func(t *testing.T, h *harness) {
+				maps.Copy(h.vars, capable)
+				maps.Copy(h.vars, tt.vars)
+				h.env.IsTerminal = func(io.Writer) bool { return tt.terminal }
 
-			h.run(tt.args...)
+				h.run(tt.args...)
+
+				assert.Equal(t, tt.wantColor, strings.Contains(h.stdout.String(), "\x1b["))
+			})
+		})
+	}
+}
+
+// The classic Windows console prints escape codes as garbage, so on Windows
+// color needs a terminal that announces itself: Windows Terminal sets
+// WT_SESSION, Git Bash and similar shells set TERM.
+func TestColorOnWindowsNeedsACapableTerminal(t *testing.T) {
+	tests := []struct {
+		name      string
+		vars      map[string]string
+		wantColor bool
+	}{
+		{name: "classic console", wantColor: false},
+		{name: "Windows Terminal", vars: map[string]string{"WT_SESSION": "2f1d7a5e-0000-4000-8000-000000000000"}, wantColor: true},
+		{name: "shell that sets TERM", vars: map[string]string{"TERM": "xterm"}, wantColor: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarnessOn(t, "windows")
+			maps.Copy(h.vars, tt.vars)
+			h.env.IsTerminal = func(io.Writer) bool { return true }
+
+			h.run("doctor")
 
 			assert.Equal(t, tt.wantColor, strings.Contains(h.stdout.String(), "\x1b["))
 		})
@@ -326,41 +408,45 @@ func (explodingStore) Get(string) (string, error) { panic("keychain exploded") }
 // Spec §11: a panic is caught, the user gets a pointer to the error report,
 // and the process exits cleanly instead of dumping a stack trace.
 func TestPanicBecomesAnErrorReport(t *testing.T) {
-	h := newHarness(t)
-	h.env.Secrets = explodingStore{}
+	onEveryPlatform(t, func(t *testing.T, h *harness) {
+		h.env.Secrets = explodingStore{}
 
-	code := h.run("doctor")
+		code := h.run("doctor")
 
-	assert.Equal(t, cli.ExitError, code)
-	assert.Contains(t, h.stderr.String(), "beklenmeyen bir hata")
-	assert.Contains(t, h.stderr.String(), filepath.Join(h.home, "state", "gitpal", "gitpal.log"))
-	assert.NotContains(t, h.stderr.String(), "goroutine", "the stack trace belongs in the log, not on screen")
-	log := h.logFile()
-	assert.Contains(t, log, "keychain exploded")
-	assert.Contains(t, log, "goroutine")
+		assert.Equal(t, cli.ExitError, code)
+		assert.Contains(t, h.stderr.String(), "beklenmeyen bir hata")
+		assert.Contains(t, h.stderr.String(), h.logPath())
+		assert.NotContains(t, h.stderr.String(), "goroutine", "the stack trace belongs in the log, not on screen")
+		log := h.logFile()
+		assert.Contains(t, log, "keychain exploded")
+		assert.Contains(t, log, "goroutine")
+	})
 }
 
 func TestLogRecordsCommandsButNotOutput(t *testing.T) {
-	h := newHarness(t)
-	h.vars["GITPAL_LOG_LEVEL"] = "debug"
+	onEveryPlatform(t, func(t *testing.T, h *harness) {
+		h.vars["GITPAL_LOG_LEVEL"] = "debug"
 
-	h.run("doctor")
+		h.run("doctor")
 
-	log := h.logFile()
-	assert.Contains(t, log, "command=doctor")
-	assert.Contains(t, log, "exit=0")
-	assert.Contains(t, log, `cmd="config --get --null -- user.email"`)
-	assert.NotContains(t, log, "test@example.com", "command output must not be logged")
+		log := h.logFile()
+		assert.Contains(t, log, "command=doctor")
+		assert.Contains(t, log, "exit=0")
+		assert.Contains(t, log, `cmd="config --get --null -- user.email"`)
+		assert.NotContains(t, log, "test@example.com", "command output must not be logged")
+	})
 }
 
 func TestUnwritableLogDoesNotBreakCommands(t *testing.T) {
-	h := newHarness(t)
-	blocker := filepath.Join(h.home, "blocker")
-	require.NoError(t, os.WriteFile(blocker, nil, 0o600))
-	h.vars["XDG_STATE_HOME"] = blocker
+	onEveryPlatform(t, func(t *testing.T, h *harness) {
+		blocker := filepath.Join(h.home, "blocker")
+		require.NoError(t, os.WriteFile(blocker, nil, 0o600))
+		h.setStateDir(blocker)
 
-	code := h.run("doctor")
+		code := h.run("doctor")
 
-	assert.Equal(t, cli.ExitOK, code)
-	assert.Contains(t, h.stdout.String(), "3 tamam")
+		assert.Equal(t, cli.ExitOK, code)
+		assert.Contains(t, h.stdout.String(), "3 tamam")
+		assert.Empty(t, h.logFiles(), "the log directory is blocked, so no log may be written anywhere else either")
+	})
 }
