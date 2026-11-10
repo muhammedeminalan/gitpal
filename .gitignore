@@ -1,0 +1,24 @@
+# Derleme çıktıları
+/bin/
+/dist/
+/build/bin/
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Wails / frontend (M7)
+/frontend/node_modules/
+/frontend/dist/
+
+# İşletim sistemi / editör
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Yerel ortam dosyaları — asla commit'lenmez
+.env
+.env.*
+!.env.example

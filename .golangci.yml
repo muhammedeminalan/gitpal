@@ -1,0 +1,69 @@
+# golangci-lint v2 ayarı. Çalıştır: `make lint`  |  Biçimlendir: `make fmt`
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose
+    - copyloopvar
+    - errname
+    - errorlint
+    - forbidigo
+    - gocritic
+    - gosec
+    - misspell
+    - nilerr
+    - noctx
+    - revive
+    - unconvert
+    - unparam
+    - usestdlibvars
+  settings:
+    forbidigo:
+      analyze-types: true
+      forbid:
+        # Spec §3 ve §17: git (ve başka hiçbir süreç) internal/core/git dışında başlatılmaz.
+        - pattern: ^exec\.Command(Context)?$
+          pkg: ^os/exec$
+          msg: "süreç başlatmak yalnızca internal/core/git içinde serbesttir (spec §17)"
+    errcheck:
+      exclude-functions:
+        # Terminale yazarken oluşan hata için yapılabilecek bir şey yok.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+  exclusions:
+    generated: lax
+    presets:
+      - std-error-handling
+    rules:
+      - path: internal/core/git/
+        linters:
+          - forbidigo
+      # Test fikstürleri gerçek repolardaki gibi olağan dosya izinleri kullanır.
+      - path: internal/core/git/gittest/
+        linters:
+          - gosec
+      - path: _test\.go
+        linters:
+          - gosec
+          - noctx
+          - unparam
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/eminalan/gitpal
+  exclusions:
+    generated: lax
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -1,0 +1,36 @@
+package cli
+
+import (
+	"github.com/spf13/cobra"
+
+	"github.com/eminalan/gitpal/internal/core/i18n"
+	"github.com/eminalan/gitpal/internal/version"
+)
+
+func (a *app) newRootCmd() *cobra.Command {
+	loc := i18n.For(a.lang)
+
+	root := &cobra.Command{
+		Use:     "gitpal",
+		Short:   loc.T(i18n.MsgRootShort),
+		Long:    loc.T(i18n.MsgRootLong),
+		Version: version.String(),
+		// Errors and usage are printed by Run, in the user's language.
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			return a.startSession(cmd.Context())
+		},
+	}
+	root.SetVersionTemplate("gitpal {{.Version}}\n")
+
+	flags := root.PersistentFlags()
+	flags.BoolVar(&a.flags.json, "json", false, loc.T(i18n.MsgFlagJSON))
+	flags.BoolVar(&a.flags.noColor, "no-color", false, loc.T(i18n.MsgFlagNoColor))
+	flags.BoolVar(&a.flags.explain, "explain", false, loc.T(i18n.MsgFlagExplain))
+	flags.BoolP("help", "h", false, loc.T(i18n.MsgFlagHelp))
+	root.Flags().BoolP("version", "v", false, loc.T(i18n.MsgFlagVersion))
+
+	root.AddCommand(a.newDoctorCmd())
+	return root
+}
