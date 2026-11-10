@@ -117,3 +117,30 @@ func TestConfigGet(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestHead(t *testing.T) {
+	ctx := context.Background()
+	repo := gittest.NewRepo(t)
+
+	t.Run("unborn branch has no head commit", func(t *testing.T) {
+		hash, ok, err := repo.Runner.Head(ctx, repo.Dir)
+		require.NoError(t, err)
+		assert.False(t, ok)
+		assert.Empty(t, hash)
+	})
+
+	t.Run("after the first commit", func(t *testing.T) {
+		repo.WriteFile("a.txt", "a\n")
+		want := repo.Commit("first")
+
+		hash, ok, err := repo.Runner.Head(ctx, repo.Dir)
+		require.NoError(t, err)
+		assert.True(t, ok)
+		assert.Equal(t, want, hash)
+	})
+
+	t.Run("outside a repository", func(t *testing.T) {
+		_, _, err := repo.Runner.Head(ctx, gittest.TempDir(t))
+		assert.Equal(t, git.KindNotARepo, git.KindOf(err))
+	})
+}
