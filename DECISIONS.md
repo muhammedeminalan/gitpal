@@ -65,11 +65,24 @@ başlatıldı (her modül: önce test, sonra kod, ardından bağımsız bir ince
 durdurdu. O anda ajanlar hâlâ spec'i ve mevcut kodu okuyordu: **hiç kod yazılmamıştı, kaybolan iş yok**; geçici worktree'ler
 ve branch'leri silindi. Modül tarifleri `docs/M1_PLAN.md` içinde saklandı; sıradaki kişi sırayla ya da yine paralel yazabilir.
 
+### S-009 — Repo GitHub'da, public (2026-11-11)
+Kullanıcı repoyu kendi komutuyla açtı ve push etti: <https://github.com/muhammedeminalan/gitpal> (public).
+`main` (M0) ve `m1-git-core` (M1 temeli + notlar) yüklü; varsayılan branch `main`. S-004'teki "uzak repo yok" artık geçerli değil:
+- CI, `main`'e her push'ta ve her pull request'te koşar (`.github/workflows/ci.yml`); `m1-git-core`'a düz push CI tetiklemez.
+- M1 bitince `main`'e almanın iki yolu var: pull request (CI üç işletim sisteminde koşar — önerilen) ya da yerelde
+  `git merge --ff-only` + `git push`.
+- Push etmek hâlâ kullanıcının kararıdır (S-007); Claude Code sormadan push etmez.
+
 ## Mimari kararlar
 
 ### A-001 — Modül yolu `github.com/eminalan/gitpal` (2026-11-10)
 **Varsayım.** Global git config'teki GitHub noreply adresinden kullanıcı adı `eminalan` çıkarıldı.
 Yanlışsa: `go mod edit -module <yeni>` + import yollarında toplu değiştirme + Makefile `MODULE` + `.golangci.yml`.
+
+**Güncelleme (2026-11-11): varsayım yanlış çıktı, düzeltme bekliyor.** Repo `github.com/muhammedeminalan/gitpal` adresinde
+açıldı (S-009); GitHub kullanıcı adı `muhammedeminalan`, `eminalan` değil. Kod hâlâ `github.com/eminalan/gitpal` yolunu
+kullanıyor. Derlemeyi ve testleri bozmaz (yol yalnızca bir addır), ama `go install github.com/muhammedeminalan/gitpal/cmd/gitpal@latest`
+çalışmaz ve M8'deki dağıtım yanlış adresi gösterir. Yukarıdaki dört adımla düzeltilmeli; M1'e dönüldüğünde ilk iş.
 
 ### A-002 — golangci-lint v2, Homebrew ile (2026-11-10)
 Spec'teki `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest` yolu eski v1 modülüdür
@@ -246,7 +259,8 @@ gereken git ayarları ve yazılması gereken testler `docs/M1_PLAN.md` içinde. 
 |---|---|
 | Log rotasyonu | M8 |
 | Cobra sabit metinlerinin çevirisi | M8 |
-| Windows ve Linux'ta test koşusu | CI ilk push'ta çalışacak; yerelde yalnızca cross-compile + vet doğrulandı |
+| Windows'ta 4 CLI testi başarısız (ilk CI koşusu) | M1'e dönüldüğünde; ayrıntı "Milestone durumu → M0" |
+| Modül yolu `eminalan` → `muhammedeminalan` | M1'e dönüldüğünde ilk iş (A-001 güncellemesi) |
 | `.goreleaser.yaml`, `gp` kısa adı | M8 |
 | `init`, `clone` (ilerleme göstergeli), `log --graph` çizimi | M3 (A-020) |
 | GUI'de SSH parola / host anahtarı istemi | M7 (A-020) |
@@ -259,15 +273,25 @@ ayarı, ayar yükleme (`internal/core/config`), `git.Runner`, sürüm/kimlik oku
 `gitpal doctor` (`--json`, `--explain`, `--no-color`).
 **Doğrulama:** `go test -race ./...` geçti; lint 0 sorun; `internal/core` kapsamı %93,1; 5 hedef platformda derleme + vet temiz;
 `./bin/gitpal doctor` bu makinede çalıştırıldı (3 tamam, 2 uyarı: GitHub token'ı ve AI anahtarı yok).
-**Kalan:** yok. **Bilinen sorun:** CI henüz hiç koşmadı (uzak repo yok).
+**Kalan:** yok.
+**İlk CI koşusu (2026-11-11, `main` @ `e6e724b`, [run 42910831051](https://github.com/muhammedeminalan/gitpal/actions/runs/42910831051)): başarısız.**
+lint ✅, kapsam ✅, testler Linux ✅ ve macOS ✅, **Windows ❌**. Windows'ta yalnızca `internal/cli` paketinde 4 test düşüyor:
+- `TestDoctorSeesStoredSecretsWithoutPrintingThem`, `TestPanicBecomesAnErrorReport`, `TestLogRecordsCommandsButNotOutput`:
+  test yardımcısı `harness.logFile()` (`internal/cli/cli_test.go`) log yolunu `state/gitpal/gitpal.log` diye sabit yazıyor;
+  Windows'ta log `%LOCALAPPDATA%\gitpal\gitpal.log` altına gider (A-006). Üründe değil **testte** hata: yardımcı yolu
+  `config` paketinden sormalı ya da `LOCALAPPDATA`'yı da izole etmeli.
+- `TestColorOnlyGoesToTerminals/terminal`: terminalde renk bekleniyor, Windows'ta renk gelmiyor. **Nedeni incelenmedi**
+  (test ortamı mı, renk tespiti mi belli değil).
+Bu yüzden `main` şu an GitHub'da kırmızı görünür. Düzeltilmedi; M1'e dönüldüğünde ele alınacak.
 
 ### M1 — Git çekirdeği ⏸ YARIDA BIRAKILDI (2026-11-11)
 
 > **Buradan devam et.** Kullanıcı 2026-11-11'de tüm işlemleri durdurdu. Aşağısı o andaki gerçek durumdur.
 
 **Nerede:** branch **`m1-git-core`** (`main`'in üzerinde). `main` hâlâ M0'da (`e6e724b`) ve dokunulmadı.
-Repo **yalnızca bu makinede**; uzak repo yok, hiçbir şey push edilmedi. Başka bir makinede devam edilecekse repo önce oraya
-taşınmalı (GitHub'a push kullanıcı kararıdır, S-007).
+Repo GitHub'da (public, S-009): <https://github.com/muhammedeminalan/gitpal>. İki branch de yüklü ve yerelle aynı.
+Başka bir makinede devam etmek için:
+`git clone https://github.com/muhammedeminalan/gitpal.git && cd gitpal && git switch m1-git-core`
 
 **Biten — ortak temel** (commit `53f4685`, `318a5ab`):
 - 22 yeni hata türü + stderr eşleştirme tablosu (A-016)
@@ -296,12 +320,15 @@ taşınmalı (GitHub'a push kullanıcı kararıdır, S-007).
 
 **Devam etmek için sıra:**
 1. `git switch m1-git-core` ve `docs/M1_PLAN.md`'yi oku.
+   - Önce iki küçük temizlik: modül yolunu `github.com/muhammedeminalan/gitpal` yap (A-001 güncellemesi) ve Windows'ta düşen
+     4 CLI testini düzelt (yukarıda M0 → ilk CI koşusu). İkisi de modüllerden bağımsız.
 2. Modülleri yaz (her biri: önce test, başarısız olduğunu gör, sonra kod). Önerilen sıra tabloda; hepsi birbirinden bağımsız.
 3. Yeni hata türleri çıktıysa `errors.go` + `localize.go` + `i18n/messages_git.go`'ya işle (TR + EN).
 4. Her modülü bağımsız bir gözle incele; bulunan hatayı önce başarısız testle kanıtla.
 5. `make check` yeşil olana kadar düzelt.
 6. Bu bölümü "M1 ✅" olarak güncelle, modüllerde alınan kararları yukarıya ekle.
-7. `main`'e al: `git switch main && git merge --ff-only m1-git-core`.
+7. `main`'e al: pull request aç (CI üç işletim sisteminde koşar) ya da `git switch main && git merge --ff-only m1-git-core`
+   ve push (S-009). Push kullanıcının kararıdır.
 
 Claude Code ile devam edilecekse söylenecek tek şey: *"DECISIONS.md'deki M1 notundan devam et."*
 

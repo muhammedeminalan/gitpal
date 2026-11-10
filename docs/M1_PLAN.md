@@ -192,4 +192,4 @@ Integration tests (bare origin via gittest.NewBareRepo, two clones via gittest.C
 5. `make check` (lint + race testleri + kapsam ≥ %80 + 5 platform derleme). Şu an lint'in verdiği 2 "unused" uyarısı
    (`literalPathspecsEnv`, `endOfOptions`) modüller yazılınca kendiliğinden kapanır.
 6. `DECISIONS.md`: "Milestone durumu → M1" bölümünü güncelle, modüllerde alınan kararları ekle.
-7. `m1-git-core` → `main` (fast-forward) ve M1 özeti.
+7. `m1-git-core` → `main`: pull request (CI üç işletim sisteminde koşar) ya da fast-forward + push; ardından M1 özeti.
