@@ -36,6 +36,8 @@ type harness struct {
 	stderr  bytes.Buffer
 	secrets *secretstest.Memory
 	gitOpts []gittest.Option
+	// interactive makes gitpal believe a person answers on stdin.
+	interactive bool
 }
 
 // platforms are the operating systems gitpal ships for. Where files live and
@@ -76,9 +78,10 @@ func newHarnessOn(t *testing.T, goos string) *harness {
 		NewRunner: func(opts ...git.Option) *git.Runner {
 			return gittest.NewRunner(t, append(h.gitOpts, gittest.WithGitOptions(opts...))...)
 		},
-		Secrets:    h.secrets,
-		LookPath:   func(string) (string, error) { return "", errors.New("not installed") },
-		IsTerminal: func(io.Writer) bool { return false },
+		Secrets:     h.secrets,
+		LookPath:    func(string) (string, error) { return "", errors.New("not installed") },
+		IsTerminal:  func(io.Writer) bool { return false },
+		Interactive: func() bool { return h.interactive },
 	}
 	return h
 }

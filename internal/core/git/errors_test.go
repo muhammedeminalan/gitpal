@@ -35,6 +35,7 @@ func TestClassifyRecognizesCommonFailures(t *testing.T) {
 		{"dns", "fatal: unable to access 'https://nohost.invalid/a.git/': Could not resolve host: nohost.invalid", KindRemoteUnreachable},
 		{"ssh resolve", "ssh: Could not resolve hostname nohost.invalid: nodename nor servname provided, or not known\nfatal: Could not read from remote repository.", KindRemoteUnreachable},
 		{"missing path remote", "fatal: '/tmp/nope' does not appear to be a git repository\nfatal: Could not read from remote repository.", KindRemoteUnreachable},
+		{"clone of a missing path", "fatal: repository '/tmp/nope' does not exist", KindRemoteUnreachable},
 		{"no push destination", "fatal: No configured push destination.\nEither specify the URL from the command-line or configure a remote repository using", KindNoRemote},
 		{"no such remote", "error: No such remote 'upstream'", KindNoRemote},
 		{"non fast forward", " ! [rejected]        main -> main (non-fast-forward)\nerror: failed to push some refs to '/tmp/r'\nhint: Updates were rejected because the tip of your current branch is behind", KindRejected},

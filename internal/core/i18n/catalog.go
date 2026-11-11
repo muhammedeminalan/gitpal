@@ -9,4 +9,5 @@ var catalog = mergeCatalogs(
 	doctorMessages,
 	gitMessages,
 	safetyMessages,
+	cliMessages,
 )

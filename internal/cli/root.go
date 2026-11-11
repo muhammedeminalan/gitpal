@@ -28,9 +28,31 @@ func (a *app) newRootCmd() *cobra.Command {
 	flags.BoolVar(&a.flags.json, "json", false, loc.T(i18n.MsgFlagJSON))
 	flags.BoolVar(&a.flags.noColor, "no-color", false, loc.T(i18n.MsgFlagNoColor))
 	flags.BoolVar(&a.flags.explain, "explain", false, loc.T(i18n.MsgFlagExplain))
+	flags.StringVar(&a.flags.repo, "repo", "", loc.T(i18n.MsgFlagRepo))
+	flags.BoolVar(&a.flags.dryRun, "dry-run", false, loc.T(i18n.MsgFlagDryRun))
+	flags.BoolVarP(&a.flags.yes, "yes", "y", false, loc.T(i18n.MsgFlagYes))
 	flags.BoolP("help", "h", false, loc.T(i18n.MsgFlagHelp))
 	root.Flags().BoolP("version", "v", false, loc.T(i18n.MsgFlagVersion))
 
-	root.AddCommand(a.newDoctorCmd())
+	root.AddCommand(
+		a.newDoctorCmd(),
+		a.newStatusCmd(), a.newDiffCmd(),
+		a.newAddCmd(), a.newUnstageCmd(), a.newDiscardCmd(), a.newIgnoreCmd(),
+		a.newCommitCmd(), a.newSaveCmd(),
+		a.newPushCmd(), a.newPullCmd(), a.newFetchCmd(),
+		a.newBranchCmd(), a.newLogCmd(),
+		a.newUndoCmd(), a.newBackupsCmd(), a.newHistoryCmd(),
+		a.newConfigCmd(), a.newInitCmd(), a.newCloneCmd(),
+	)
+	// Without a subcommand: the interactive screen for a person, help for a
+	// script.
+	// cobra's default argument check stays: an unknown word is still an
+	// unknown command.
+	root.RunE = func(cmd *cobra.Command, _ []string) error {
+		if !a.env.Interactive() {
+			return cmd.Help()
+		}
+		return a.runDashboard(cmd.Context())
+	}
 	return root
 }

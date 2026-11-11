@@ -793,3 +793,27 @@ func newEmptyRepo(t *testing.T) *gittest.Repo {
 	repo.Git("switch", "--quiet", "-c", "work")
 	return repo
 }
+
+func TestSummaryPutsAnAssessmentIntoWords(t *testing.T) {
+	f := newFixture(t)
+	for i := range 7 {
+		f.repo.WriteFile("f"+string(rune('a'+i))+".txt", "x\n")
+	}
+	f.repo.Commit("many files")
+	for i := range 7 {
+		f.repo.WriteFile("f"+string(rune('a'+i))+".txt", "changed\n")
+	}
+
+	for _, lang := range []i18n.Lang{i18n.TR, i18n.EN} {
+		s := f.assess(safety.Discard(".")).Summary(lang)
+		assert.NotEmpty(t, s.Risk)
+		require.Len(t, s.Effects, 1)
+		assert.Contains(t, s.Effects[0], "7")
+		assert.Contains(t, s.Effects[0], "…", "a long list is cut short")
+		assert.Len(t, s.Backups, 1)
+		for _, line := range append(append(s.Effects, s.Backups...), s.Risk) {
+			assert.NotContains(t, line, "%!")
+			assert.NotContains(t, line, "cli.", "every text comes from the catalog")
+		}
+	}
+}

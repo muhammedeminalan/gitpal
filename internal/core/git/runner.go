@@ -138,6 +138,10 @@ type Cmd struct {
 	Env []string
 	// Timeout overrides the Runner's default; negative means no limit.
 	Timeout time.Duration
+	// Progress, when set, also receives what git writes to standard error
+	// while it runs — line by line, with credentials redacted — so that a
+	// long command (clone, fetch) can show its progress.
+	Progress io.Writer
 }
 
 // Result is what a command produced.
@@ -213,6 +217,11 @@ func (r *Runner) run(ctx context.Context, cmd Cmd) (Result, error) {
 	c.Dir = cmd.Dir
 	c.Env = r.environ(cmd.Env)
 	c.Stdout, c.Stderr = &stdout, &stderr
+	if cmd.Progress != nil {
+		progress := &redactingWriter{out: cmd.Progress}
+		defer progress.flush()
+		c.Stderr = io.MultiWriter(&stderr, progress)
+	}
 	c.WaitDelay = killGrace
 	if cmd.Stdin != nil {
 		c.Stdin = bytes.NewReader(cmd.Stdin)
@@ -304,5 +313,35 @@ func needsQuoting(r rune) bool {
 		return false
 	default:
 		return true
+	}
+}
+
+// redactingWriter passes text through one line at a time with credentials
+// removed. git ends progress updates with "\r" and other lines with "\n";
+// both end a line here.
+type redactingWriter struct {
+	out     io.Writer
+	pending []byte
+}
+
+func (w *redactingWriter) Write(p []byte) (int, error) {
+	w.pending = append(w.pending, p...)
+	for {
+		i := bytes.IndexAny(w.pending, "\r\n")
+		if i < 0 {
+			break
+		}
+		line := redact(string(w.pending[:i])) + string(w.pending[i])
+		w.pending = w.pending[i+1:]
+		// A failing progress display must not fail the command.
+		_, _ = io.WriteString(w.out, line)
+	}
+	return len(p), nil
+}
+
+func (w *redactingWriter) flush() {
+	if len(w.pending) > 0 {
+		_, _ = io.WriteString(w.out, redact(string(w.pending)))
+		w.pending = nil
 	}
 }

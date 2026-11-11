@@ -409,6 +409,35 @@ Undo yalnızca repo işlemin bıraktığı yerde duruyorsa ilerler; değilse hi�
 HEAD'i sert biçimde geri taşıyan undo'lar önce kendi yedeğini alır. Undo'nun kendisi geçmişe `undo` olarak yazılır ve
 tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer geriye yürür.
 
+### A-032 — CLI ve TUI (M3, 2026-11-11)
+- Komutlar: `status`, `diff`, `add`, `unstage`, `discard`, `ignore`, `commit`, `save`, `push`, `pull`, `fetch`,
+  `branch [list|new|switch|delete|rename|clean]`, `log [--graph]`, `undo`, `backups [list|restore|prune]`, `history`,
+  `config [list|get|set|path|edit]`, `init`, `clone`, `doctor`. Genel bayraklar: `--repo`, `--dry-run`, `--yes`, `--json`,
+  `--explain`, `--no-color`. `merge`, `rebase`, `stash` M5'te; `pr`, `issue`, `repo` M6'da; `gui` M7'de.
+- Yıkıcı ya da riskli her komut `runOp` → `safety.Guard` üzerinden çalışır. Soru yalnızca stdin **ve** stdout terminalken ve
+  `--json` yokken sorulur; aksi halde onay gerektiren işlem çıkış kodu 3 ile reddedilir. "Tehlikeli" işlemde kısa "e/y"
+  yetmez, tam kelime ("evet"/"yes") gerekir; "çok tehlikeli"de branch adı yazılır.
+- Uyarılar (sır, büyük dosya) onay sorulmasa da (`--yes`, terminal yok) her zaman stderr'e basılır.
+- Çıkış kodları (spec 8): `0` başarılı, `1` hata, `2` kullanıcı vazgeçti (`ErrDeclined`, giriş sonu), `3` güvenlik katmanı
+  engelledi (`BlockedError`, `ErrConfirmationRequired`). `--dry-run` engellenecek işlemde de 3 döner (script'ler için).
+- Sorular ve güvenlik özeti stderr'e, sonuçlar stdout'a yazılır: `--json` çıktısı her zaman tek, temiz bir JSON belgesidir.
+- `push --force` ve `--force-with-lease` aynı şeyi yapar: düz force yoktur (spec 7.2 kural 2). İlk push upstream'i ayarlar.
+- `save`: seçilmeyen ama stage'de olan dosyalar stage'den çıkarılır — commit'e giren, seçilendir. Terminal yoksa ya da `--all`
+  verilmişse hepsi seçilir (spec "varsayılan: hepsi").
+- `branch clean`: korumalı branch'ler toplu temizlikte hiçbir zaman aday değildir; her silme ayrı ayrı güvenlik katmanından geçer.
+- `log --graph`: şerit (lane) tabanlı sade çizim (`*`, `|`, `/`); çapraz bağlantı çizgisi yok — her satır şerit sayısı kadar
+  geniş kalır. `--grep` / `--author` CLI'da büyük-küçük harf duyarsız.
+- `config set` yalnızca genel dosyaya yazar (repo dosyası güvenilmez, A-005 ruhu); yorumlar korunur; geçersiz değer dosyayı
+  hiç değiştirmez (önce geçici dosyaya yazılıp `Load` ile doğrulanır).
+- `config edit` kullanıcının editörünü (`VISUAL` / `EDITOR`, argümanlar boşluktan bölünür, kabuk yok) başlatır. Bu, git dışında
+  süreç başlatan **tek** yerdir; forbidigo istisnası satırında gerekçesiyle işaretli.
+- TUI (bubbletea): `gitpal` alt komutsuz ve terminalde çalışınca ana ekran açılır (stage/unstage, hepsini ekle, commit, push,
+  pull, fetch, yenile); terminal yoksa yardım gösterilir (script'ler değişmez). Riskli işlemler ekranda da önce değerlendirilir,
+  aynı özet gösterilir, aynı onay türü istenir. Dosya seçici `add` ve `save`'de kullanılır.
+- Ekranlar `cli.Env` üzerinden enjekte edilir (`Pick`, `Dashboard`, `Editor`, `Interactive`): CLI testleri gerçek terminal
+  olmadan soru-cevap akışlarını sınar; TUI modelleri tuş vuruşlarıyla ayrıca test edilir.
+- git paketine: `Init`, `Clone` (ilerleme çıktısı satır satır, kimlik bilgisi redakte edilerek akar — `Cmd.Progress`).
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
@@ -416,12 +445,10 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
 | Log rotasyonu | M8 |
 | Cobra sabit metinlerinin çevirisi | M8 |
 | M2 testlerinin Windows ve macOS'ta koşması | `main`'e alınınca (CI); yerelde yalnızca Linux + 5 platform derleme |
-| `gitpal undo`, `gitpal backups` komutları; config → `safety.Policy` eşlemesi | M3 (çekirdek M2'de hazır) |
 | merge / rebase / cherry-pick / stash drop'un güvenlik katmanından geçmesi | M5 (bu işlemler M5'te geliyor) |
 | `history.jsonl` boyut sınırı / rotasyonu | M8 |
 | `make cover` bulut konteynerinde düşüyor (`go: no such tool "covdata"`) | Ortam sorunu, `main`'de de aynı; kapsam elle ölçüldü. Mac ve CI'da beklenmiyor |
 | `.goreleaser.yaml`, `gp` kısa adı | M8 |
-| `init`, `clone` (ilerleme göstergeli), `log --graph` çizimi | M3 (A-020) |
 | GUI'de SSH parola / host anahtarı istemi | M7 (A-020) |
 
 ## Milestone durumu
@@ -475,11 +502,15 @@ Bu yüzden `main` şu an GitHub'da kırmızı görünür. Düzeltme `fix/windows
    çalışacak; `config.SafetyConfig` → `safety.Policy` eşlemesi, onay ekranı (`Approver`), çıkış kodları 2 / 3,
    `--dry-run` = `Assess`, `--explain` = `git.WithObserver`.
 
+### M3 — CLI + TUI ✅ (2026-11-11)
+Komutlar, `save` akışı, dosya seçici ve ana ekran (A-032). Doğrulama: lint 0, race testleri geçti, `internal/core` kapsamı
+%92,3, 5 platform derleme. Gerçek ikiliyle elle denendi (init → save → discard reddi → log --graph).
+**Bilinen sınır:** TUI gerçek bir terminalde elle denenmedi (bu ortamda TTY yok); modeller tuş vuruşu testleriyle sınandı.
+
 **Tahmini kalan süre** (tahmin, ölçüm değil):
 
 | Milestone | Süre |
 |---|---|
-| M3 CLI + TUI | 3–4 saat |
 | M4 AI commit mesajı | 2–3 saat |
 | M5 İleri git | 3–4 saat |
 | M6 GitHub | ~3 saat |

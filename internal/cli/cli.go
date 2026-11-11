@@ -5,6 +5,7 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -24,7 +26,9 @@ import (
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
 	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
 	"github.com/muhammedeminalan/gitpal/internal/core/logging"
+	"github.com/muhammedeminalan/gitpal/internal/core/safety"
 	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
+	"github.com/muhammedeminalan/gitpal/internal/tui"
 )
 
 // Exit codes (spec §8).
@@ -63,6 +67,14 @@ type Env struct {
 	LookPath func(file string) (string, error)
 	// IsTerminal reports whether w is an interactive terminal.
 	IsTerminal func(w io.Writer) bool
+	// Interactive reports whether a person is at the keyboard: standard
+	// input and output are both a terminal. Questions are only asked then.
+	Interactive func() bool
+	// Pick and Dashboard show the interactive screens.
+	Pick      func(ctx context.Context, opts tui.PickOptions) ([]string, error)
+	Dashboard func(ctx context.Context, opts tui.DashboardOptions) error
+	// Editor opens a file in the user's editor.
+	Editor func(ctx context.Context, path string) error
 }
 
 // SystemEnv returns the real environment of the running process.
@@ -79,6 +91,12 @@ func SystemEnv() Env {
 		Secrets:    secrets.Keyring(),
 		LookPath:   exec.LookPath,
 		IsTerminal: isTerminal,
+		Interactive: func() bool {
+			return term.IsTerminal(int(os.Stdin.Fd())) && isTerminal(os.Stdout) //nolint:gosec // see isTerminal
+		},
+		Pick:      tui.Pick,
+		Dashboard: tui.RunDashboard,
+		Editor:    openEditor,
 	}
 }
 
@@ -143,12 +161,19 @@ type app struct {
 	lang    i18n.Lang
 	flags   globalFlags
 	session *session
+
+	// input reads answers from standard input; shared by every question so
+	// that buffered lines are not lost between them.
+	input *bufio.Reader
 }
 
 type globalFlags struct {
 	json    bool
 	noColor bool
 	explain bool
+	repo    string
+	dryRun  bool
+	yes     bool
 }
 
 // session is what a command works with: where it runs, the git runner and the
@@ -158,7 +183,9 @@ type session struct {
 	dir string
 	// repoRoot is the root of the repository containing dir; empty outside one.
 	repoRoot string
-	runner   *git.Runner
+	// repoErr is why there is no repository root.
+	repoErr error
+	runner  *git.Runner
 	// loaded and configErr are the outcome of config.Load. A config error
 	// does not stop the session: `doctor` must be able to report it.
 	loaded    config.Loaded
@@ -207,6 +234,13 @@ func (a *app) startSession(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("find the current directory: %w", err)
 	}
+	if a.flags.repo != "" {
+		if filepath.IsAbs(a.flags.repo) {
+			dir = a.flags.repo
+		} else {
+			dir = filepath.Join(dir, a.flags.repo)
+		}
+	}
 
 	opts := []git.Option{git.WithLogger(a.logger)}
 	if a.flags.explain {
@@ -218,6 +252,8 @@ func (a *app) startSession(ctx context.Context) error {
 	// root; commands that need one report that themselves.
 	if root, err := s.runner.TopLevel(ctx, dir); err == nil {
 		s.repoRoot = root
+	} else {
+		s.repoErr = err
 	}
 
 	globalPath, err := config.GlobalPath(a.cfgEnv)
@@ -264,6 +300,10 @@ func exitCode(err error) int {
 		return ExitOK
 	case errors.As(err, &coded):
 		return coded.code
+	case errors.Is(err, safety.ErrDeclined):
+		return ExitCanceled
+	case isBlocked(err):
+		return ExitBlocked
 	case errors.Is(err, context.Canceled):
 		return ExitCanceled
 	default:
@@ -298,4 +338,11 @@ func commandName(cmd *cobra.Command) string {
 		return rest
 	}
 	return path
+}
+
+// isBlocked reports whether the safety layer refused an operation: a rule
+// stopped it, or it needed a confirmation nobody could give.
+func isBlocked(err error) bool {
+	var blocked *safety.BlockedError
+	return errors.As(err, &blocked) || errors.Is(err, safety.ErrConfirmationRequired)
 }

@@ -196,6 +196,7 @@ var stderrKinds = []struct {
 		"could not resolve host", "connection refused", "connection timed out", "operation timed out",
 		"network is unreachable", "failed to connect", "does not appear to be a git repository",
 		"repository not found", "could not read from remote repository", "unable to access",
+		"fatal: repository '",
 	}},
 	{KindNoUpstream, []string{
 		"has no upstream branch", "no tracking information", "no upstream configured", "has no upstream information",
