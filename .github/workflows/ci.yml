@@ -70,6 +70,8 @@ jobs:
             tags: gui,production,webkit2_41
           - os: macos-latest
             tags: gui,production
+            # Wails'in kullandığı UTType bu framework'te; wails CLI'sı da böyle bağlıyor.
+            ldflags: -framework UniformTypeIdentifiers
           - os: windows-latest
             tags: gui,production
     steps:
@@ -95,4 +97,5 @@ jobs:
         shell: bash
         env:
           CGO_ENABLED: "1"
+          CGO_LDFLAGS: ${{ matrix.ldflags }}
         run: go build -tags '${{ matrix.tags }}' -o gitpal-gui-bin ./cmd/gitpal-gui

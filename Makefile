@@ -30,6 +30,8 @@ build: ## bin/gitpal üret
 # geliştirme paketleri gerekir; macOS ve Windows'ta sistemin web görünümü kullanılır.
 GUI_TAGS ?= gui,production$(if $(filter Linux,$(shell uname -s 2>/dev/null)),$(comma)webkit2_41)
 comma := ,
+# macOS: Wails'in kullandığı UTType için (wails CLI'sı da bunu ekler).
+GUI_LDFLAGS ?= $(if $(filter Darwin,$(shell uname -s 2>/dev/null)),-framework UniformTypeIdentifiers)
 
 .PHONY: frontend
 frontend: ## Arayüzün web kısmını derle (frontend/dist)
@@ -37,7 +39,7 @@ frontend: ## Arayüzün web kısmını derle (frontend/dist)
 
 .PHONY: gui
 gui: frontend ## bin/gitpal-gui üret (masaüstü arayüzü)
-	CGO_ENABLED=1 $(GO) build -trimpath -tags '$(GUI_TAGS)' -ldflags '$(LDFLAGS)' -o bin/gitpal-gui ./cmd/gitpal-gui
+	CGO_ENABLED=1 CGO_LDFLAGS='$(GUI_LDFLAGS)' $(GO) build -trimpath -tags '$(GUI_TAGS)' -ldflags '$(LDFLAGS)' -o bin/gitpal-gui ./cmd/gitpal-gui
 
 .PHONY: install
 install: ## gitpal'ı GOPATH/bin altına kur
