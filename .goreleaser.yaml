@@ -1,0 +1,67 @@
+# gitpal sürüm paketleri (spec 13, M8). Yerelde denemek için:
+#   goreleaser release --snapshot --clean
+# Masaüstü arayüzü (gitpal-gui) cgo ve platformun web görünümü gerektirdiği
+# için burada değil; .github/workflows/release.yml her işletim sisteminde
+# ayrıca derleyip aynı sürüme ekler.
+version: 2
+project_name: gitpal
+
+builds:
+  - id: gitpal
+    main: ./cmd/gitpal
+    binary: gitpal
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/muhammedeminalan/gitpal/internal/version.Version={{ .Version }}
+      - -X github.com/muhammedeminalan/gitpal/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/muhammedeminalan/gitpal/internal/version.Date={{ .Date }}
+
+archives:
+  - id: gitpal
+    ids: [gitpal]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+nfpms:
+  - id: packages
+    ids: [gitpal]
+    package_name: gitpal
+    vendor: gitpal
+    homepage: https://github.com/muhammedeminalan/gitpal
+    maintainer: gitpal <noreply@users.noreply.github.com>
+    description: Git iş akışını tek yerden, güvenlik katmanıyla yürüten araç.
+    formats: [deb, rpm]
+    dependencies: [git]
+    contents:
+      # Kısa ad (spec 7): gp
+      - src: /usr/bin/gitpal
+        dst: /usr/bin/gp
+        type: symlink
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  draft: true

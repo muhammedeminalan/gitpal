@@ -460,3 +460,24 @@ func TestGUIOpensTheWindowOnTheRepository(t *testing.T) {
 	assert.Equal(t, cli.ExitError, h.run("gui"))
 	assert.Contains(t, h.stderr.String(), "gitpal-gui")
 }
+
+func TestHelpIsInTheUsersLanguage(t *testing.T) {
+	h := newHarness(t)
+	h.writeConfig("language: tr\n")
+	require.Equal(t, cli.ExitOK, h.run("--help"))
+	out := h.stdout.String()
+	for _, want := range []string{"Kullanım:", "Komutlar:", "Seçenekler:", "yardım", `"gitpal [komut] --help"`} {
+		assert.Contains(t, out, want)
+	}
+	for _, english := range []string{"Usage:", "Available Commands:", "Flags:", "Help about any command", "for more information"} {
+		assert.NotContains(t, out, english)
+	}
+
+	require.Equal(t, cli.ExitOK, h.run("commit", "--help"))
+	assert.Contains(t, h.stdout.String(), "Genel seçenekler:")
+
+	h.writeConfig("language: en\n")
+	require.Equal(t, cli.ExitOK, h.run("--help"))
+	assert.Contains(t, h.stdout.String(), "Usage:")
+	assert.Contains(t, h.stdout.String(), "Commands:")
+}

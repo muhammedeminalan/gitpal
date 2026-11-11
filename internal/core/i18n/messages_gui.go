@@ -16,7 +16,7 @@ var guiMessages = map[Key]message{
 	MsgGUINoRepo:    {tr: "Önce bir repo aç.", en: "Open a repository first."},
 	MsgGUIUnknownOp: {tr: "Bilinmeyen işlem: %s", en: "Unknown operation: %s"},
 
-	MsgGUIShort: {tr: "Masaüstü arayüzünü bu repoda aç", en: "Open the desktop app on this repository"},
+	MsgGUIShort: {tr: "masaüstü arayüzünü bu repoda aç", en: "open the desktop app on this repository"},
 	MsgGUINotInstalled: {
 		tr: "gitpal-gui bulunamadı. Masaüstü arayüzü ayrı bir programdır: gitpal ile aynı klasöre ya da PATH'e kur.",
 		en: "gitpal-gui was not found. The desktop app is a separate program: install it next to gitpal or on your PATH.",

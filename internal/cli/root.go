@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
@@ -50,6 +52,9 @@ func (a *app) newRootCmd() *cobra.Command {
 		a.newRepoCmd(), a.newPRCmd(), a.newIssueCmd(), a.newReleaseCmd(), a.newActionsCmd(),
 		a.newGUICmd(),
 	)
+	// After the commands: cobra adds help and completion only to a command
+	// that has subcommands.
+	a.localizeHelp(root, loc)
 	// Without a subcommand: the interactive screen for a person, help for a
 	// script.
 	// cobra's default argument check stays: an unknown word is still an
@@ -61,4 +66,53 @@ func (a *app) newRootCmd() *cobra.Command {
 		return a.runDashboard(cmd.Context())
 	}
 	return root
+}
+
+// localizeHelp replaces cobra's built-in English help texts. The template
+// is cobra's default without command groups (gitpal has none), with the
+// headings from the catalog.
+func (a *app) localizeHelp(root *cobra.Command, loc i18n.Localizer) {
+	more := `"{{.CommandPath}} [` + loc.T(i18n.MsgHelpCommandWord) + `] --help"`
+	r := strings.NewReplacer(
+		"@USAGE@", loc.T(i18n.MsgHelpUsage),
+		"@ALIASES@", loc.T(i18n.MsgHelpAliases),
+		"@EXAMPLES@", loc.T(i18n.MsgHelpExamples),
+		"@COMMANDS@", loc.T(i18n.MsgHelpCommands),
+		"@FLAGS@", loc.T(i18n.MsgHelpFlags),
+		"@GLOBAL@", loc.T(i18n.MsgHelpGlobalFlags),
+		"@FLAGSWORD@", loc.T(i18n.MsgHelpFlagsWord),
+		"@COMMANDWORD@", loc.T(i18n.MsgHelpCommandWord),
+		"@MORE@", loc.T(i18n.MsgHelpMore, more),
+	)
+	root.SetUsageTemplate(r.Replace(`@USAGE@{{if .Runnable}}
+  {{.CommandPath}}{{if .HasAvailableFlags}} [@FLAGSWORD@]{{end}}{{if ne .Use .Name}} {{slice .Use (len .Name)}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [@COMMANDWORD@]{{end}}{{if gt (len .Aliases) 0}}
+
+@ALIASES@
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+@EXAMPLES@
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}
+
+@COMMANDS@{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+@FLAGS@
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+@GLOBAL@
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableSubCommands}}
+
+@MORE@{{end}}
+`))
+	root.InitDefaultHelpCmd()
+	root.InitDefaultCompletionCmd()
+	for _, c := range root.Commands() {
+		switch c.Name() {
+		case "help":
+			c.Short = loc.T(i18n.MsgHelpShort)
+		case "completion":
+			c.Short = loc.T(i18n.MsgCompletionShort)
+		}
+	}
 }

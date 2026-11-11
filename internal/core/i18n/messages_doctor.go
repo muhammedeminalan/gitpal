@@ -40,8 +40,8 @@ const (
 
 var doctorMessages = map[Key]message{
 	MsgDoctorShort: {
-		tr: "Ortamı kontrol et: git sürümü, kimlik, ayarlar, GitHub token'ı, AI anahtarı",
-		en: "Check your setup: git version, identity, config, GitHub token, AI key",
+		tr: "ortamı kontrol et: git sürümü, kimlik, ayarlar, GitHub token'ı, AI anahtarı",
+		en: "check your setup: git version, identity, config, GitHub token, AI key",
 	},
 	MsgDoctorTitle: {
 		tr: "gitpal doctor — ortam kontrolü",

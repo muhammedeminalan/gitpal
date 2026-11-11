@@ -1,0 +1,80 @@
+name: Release
+
+# v ile başlayan bir tag push'lanınca taslak bir GitHub sürümü oluşturur:
+# CLI paketleri goreleaser'la, masaüstü arayüzü her işletim sisteminde ayrı
+# derlenip aynı sürüme eklenir. Taslak, elle gözden geçirilip yayımlanır.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Testler
+        run: go test -count=1 ./...
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  gui:
+    needs: cli
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            tags: gui,production,webkit2_41
+            asset: gitpal-gui_linux_amd64
+          - os: macos-latest
+            tags: gui,production
+            ldflags: -framework UniformTypeIdentifiers
+            asset: gitpal-gui_darwin_arm64
+          - os: windows-latest
+            tags: gui,production
+            asset: gitpal-gui_windows_amd64.exe
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Linux arayüz kütüphaneleri
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Derle ve sürüme ekle
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+          CGO_LDFLAGS: ${{ matrix.ldflags }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          v="${GITHUB_REF_NAME#v}"
+          m=github.com/muhammedeminalan/gitpal/internal/version
+          go build -trimpath -tags '${{ matrix.tags }}' \
+            -ldflags "-s -w -X $m.Version=$v -X $m.Commit=${GITHUB_SHA::7}" \
+            -o '${{ matrix.asset }}' ./cmd/gitpal-gui
+          gh release upload "$GITHUB_REF_NAME" '${{ matrix.asset }}' --clobber

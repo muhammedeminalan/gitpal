@@ -15,9 +15,32 @@ const (
 	MsgPanic        Key = "cli.panic"
 	MsgPanicLogged  Key = "cli.panic.logged"
 	MsgExplainTitle Key = "cli.explain.title"
+
+	MsgHelpUsage       Key = "cli.help.usage"
+	MsgHelpAliases     Key = "cli.help.aliases"
+	MsgHelpExamples    Key = "cli.help.examples"
+	MsgHelpCommands    Key = "cli.help.commands"
+	MsgHelpFlags       Key = "cli.help.flags"
+	MsgHelpGlobalFlags Key = "cli.help.global_flags"
+	MsgHelpMore        Key = "cli.help.more"
+	MsgHelpCommandWord Key = "cli.help.command_word"
+	MsgHelpFlagsWord   Key = "cli.help.flags_word"
+	MsgHelpShort       Key = "cli.help.short"
+	MsgCompletionShort Key = "cli.completion.short"
 )
 
 var commonMessages = map[Key]message{
+	MsgHelpUsage:       {tr: "Kullanım:", en: "Usage:"},
+	MsgHelpAliases:     {tr: "Diğer adları:", en: "Aliases:"},
+	MsgHelpExamples:    {tr: "Örnekler:", en: "Examples:"},
+	MsgHelpCommands:    {tr: "Komutlar:", en: "Commands:"},
+	MsgHelpFlags:       {tr: "Seçenekler:", en: "Flags:"},
+	MsgHelpGlobalFlags: {tr: "Genel seçenekler:", en: "Global flags:"},
+	MsgHelpMore:        {tr: "Bir komutun ayrıntısı için: %s", en: "For more about a command: %s"},
+	MsgHelpCommandWord: {tr: "komut", en: "command"},
+	MsgHelpFlagsWord:   {tr: "seçenekler", en: "flags"},
+	MsgHelpShort:       {tr: "bir komutun yardımını göster", en: "show help for a command"},
+	MsgCompletionShort: {tr: "kabuk için otomatik tamamlama betiği üret", en: "generate a shell completion script"},
 	MsgRootShort: {
 		tr: "Git akışını tek yerden, güvenli ve hızlı yürüt",
 		en: "Run your git workflow from one place, safely and fast",

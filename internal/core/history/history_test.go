@@ -171,3 +171,27 @@ func TestUnreadableStore(t *testing.T) {
 	_, err = store.Append(history.Entry{Op: "commit"})
 	require.Error(t, err)
 }
+
+func TestHistoryKeepsOnlyTheNewestEntriesOnceItGrowsLarge(t *testing.T) {
+	store, path := newStore(t)
+	store.MaxBytes = 2000
+	var last history.Entry
+	for i := range 40 {
+		e, err := store.Append(history.Entry{Op: "commit", Branch: "b", After: string(rune('a' + i%26))})
+		require.NoError(t, err)
+		last = e
+	}
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.LessOrEqual(t, info.Size(), int64(2000))
+
+	entries, err := store.Entries()
+	require.NoError(t, err)
+	require.NotEmpty(t, entries)
+	assert.Less(t, len(entries), 40)
+	assert.Equal(t, last.ID, entries[len(entries)-1].ID, "the newest entry is always kept")
+	undoable, ok, err := store.LastUndoable()
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, last.ID, undoable.ID)
+}

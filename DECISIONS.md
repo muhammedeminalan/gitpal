@@ -556,16 +556,35 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
   - Arayüzde interaktif rebase düzenleyici ve GitHub ekranı (PR / issue) yok; ikisi de CLI / TUI'de var.
   - SSH parola / host anahtarı istemi yok (A-020): git'in kendi askpass'ı devrede.
 
+### A-037 — Cila ve dağıtım (M8, 2026-11-11)
+- **Sürüm paketleri:** goreleaser v2 (`.goreleaser.yaml`): 5 hedef + windows/arm64, `CGO_ENABLED=0`, tar.gz / zip,
+  `checksums.txt`, `.deb` / `.rpm` (git bağımlılığı, `/usr/bin/gp` → `gitpal` bağlantısı). Sürüm taslak olarak açılır,
+  elle yayımlanır. `release.yml`: tag'de testler → goreleaser → üç işletim sisteminde `gitpal-gui` derlenip aynı sürüme
+  eklenir (cgo gerektiği için goreleaser'ın içinde değil). Yerelde `goreleaser release --snapshot` ile denendi.
+- **`gp` kısa adı:** ikinci bir binary değil (boyutu ikiye katlardı). Unix'te sembolik bağ (install.sh, deb/rpm),
+  Windows'ta `gp.cmd` yönlendiricisi (sembolik bağ yönetici izni ister).
+- **Kurulum betikleri:** `scripts/install.sh`, `scripts/install.ps1`. Arşivi `checksums.txt` ile doğrular, tutmazsa
+  kurmaz. Root istemez (`~/.local/bin`, `%LOCALAPPDATA%\Programs\gitpal`). `GITPAL_BASE_URL` yalnızca test için.
+  CI'daki `install` işi her işletim sisteminde yerel HTTP sunucusundan sahte bir sürümle uçtan uca deniyor.
+  **Sınır:** checksums.txt arşivle aynı yerden geldiği için bozulmayı yakalar, ele geçirilmiş bir sürüm sayfasını
+  yakalamaz (imza yok; V1.1'de cosign / minisign düşünülebilir).
+- **Log rotasyonu:** log açılırken 5 MB'ı geçmişse `gitpal.log.1`'e taşınır (tek yedek). Komut başına bir kez kontrol,
+  arka plan işi yok.
+- **history.jsonl sınırı:** 1 MB'ı geçince en eski kayıtlar atılır (~512 KB kalır), geçici dosya + rename ile.
+  Aynı anda iki gitpal yazarsa bir kayıt kaybolabilir (yedek değil, yalnızca geçmiş satırı) — kabul edildi.
+- **Cobra metinleri:** "Usage / Flags / Available Commands" ve `help` / `completion` açıklamaları katalogdan
+  (TR + EN). `completion` alt komutlarının (bash / zsh / …) uzun açıklamaları cobra'nın İngilizcesi kaldı.
+- **Performans:** ölçüm yapılmadı. Bilinen maliyetler A-036'da (GUI yoklaması, log 300 sınırı).
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
 |---|---|
-| Log rotasyonu | M8 |
-| Cobra sabit metinlerinin çevirisi | M8 |
+| `completion` alt komutlarının uzun açıklamaları (İngilizce) | V1.1 |
+| Sürüm imzası (cosign / minisign) | V1.1 (A-037) |
+| macOS `.app` paketi ve notarization | V1.1 |
 | M2 testlerinin Windows ve macOS'ta koşması | `main`'e alınınca (CI); yerelde yalnızca Linux + 5 platform derleme |
-| `history.jsonl` boyut sınırı / rotasyonu | M8 |
 | `make cover` bulut konteynerinde düşüyor (`go: no such tool "covdata"`) | Ortam sorunu, `main`'de de aynı; kapsam elle ölçüldü. Mac ve CI'da beklenmiyor |
-| `.goreleaser.yaml`, `gp` kısa adı | M8 |
 | GUI'de SSH parola / host anahtarı istemi | V1.1 (A-020, A-036) |
 | GUI: fsnotify, sanal liste, ilerleme/iptal, 3 yönlü çakışma, rebase düzenleyici, GitHub ekranı | V1.1 (A-036) |
 
@@ -659,10 +678,16 @@ Ctrl/Cmd+Enter commit, `s` stage. Doğrulama: lint 0 (gui etiketiyle de), race t
 elle denenmedi — Go tarafı testlerle, arayüz tip kontrolüyle sınandı.
 Ayrıca `8bba2d9`: milisaniyesi 000 olmayan yedeklerin listelenmemesi düzeltildi (GUI testleri gerçek saatle buldu).
 
-**Tahmini kalan süre** (tahmin, ölçüm değil):
+### M8 — Cila ve dağıtım ✅ (2026-11-11)
+goreleaser + `gp`, kurulum betikleri (checksum doğrulamalı), tag'le çalışan sürüm iş akışı (CLI + 3 platform GUI),
+README (kurulum, hızlı başlangıç, komutlar, güvenlik modeli, AI gizliliği, kısayollar, bilinen sınırlar), log
+rotasyonu, history.jsonl sınırı, yardım metinlerinin yerelleştirilmesi (A-037). Doğrulama: lint 0, race testleri,
+`internal/core` kapsamı %90, 5 platform derleme; goreleaser snapshot üretildi (arşiv, deb içeriği, `--version`
+kontrol edildi); install.sh yerelde doğru arşivle kurdu, bozuk arşivi reddetti.
+**Doğrulanmayan:** gerçek bir tag ile sürüm iş akışı hiç koşmadı (ilk tag'de görülecek); install.ps1 yalnızca CI'da
+denenecek (bu ortamda PowerShell yok).
 
-| Milestone | Süre |
-|---|---|
-| M8 Cila ve dağıtım | 2–3 saat |
+**V1 kabul kriterleri (spec 16) durumu:** 1 ✅ · 2 ✅ · 3 ✅ (GUI'de ana işlemler; rebase -i ve GitHub CLI/TUI'de) ·
+4 ✅ (sahte sunucuyla; gerçek GitHub'da denenmedi) · 5 ✅ · 6 ✅ · 7 ✅ (CLI tek binary; GUI ayrı binary) · 8 ✅.
 
-`gitpal save` (add → AI commit → push) M4 sonunda çalışır.
+

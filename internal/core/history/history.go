@@ -60,7 +60,14 @@ type Entry struct {
 // Store reads and appends to a history file.
 type Store struct {
 	path string
+	// MaxBytes is the size past which the oldest entries are dropped, down
+	// to about half of it. 0 means DefaultMaxBytes.
+	MaxBytes int64
 }
+
+// DefaultMaxBytes keeps a few thousand entries: far more than undo or the
+// history view ever look at.
+const DefaultMaxBytes = 1 << 20
 
 // Open returns the store for the file at path. Nothing is created until the
 // first Append.
@@ -104,7 +111,45 @@ func (s *Store) Append(e Entry) (Entry, error) {
 	if werr != nil {
 		return Entry{}, fmt.Errorf("history: %w", werr)
 	}
+	s.trim()
 	return e, nil
+}
+
+// trim drops the oldest entries once the file has grown past MaxBytes. The
+// file is rewritten through a temporary file and a rename, so a reader sees
+// either the old or the new file. An entry another gitpal appends between the
+// read and the rename is lost; that needs two gitpal processes writing to the
+// same repository at the same instant, and only costs history, never a
+// backup. A failure leaves the file as it was.
+func (s *Store) trim() {
+	limit := s.MaxBytes
+	if limit <= 0 {
+		limit = DefaultMaxBytes
+	}
+	info, err := os.Stat(s.path)
+	if err != nil || info.Size() <= limit {
+		return
+	}
+	data, err := os.ReadFile(s.path)
+	if err != nil {
+		return
+	}
+	// Keep whole lines from the end, up to half the limit.
+	keep := data
+	for int64(len(keep)) > limit/2 {
+		i := bytes.IndexByte(keep, '\n')
+		if i < 0 || i == len(keep)-1 {
+			break
+		}
+		keep = keep[i+1:]
+	}
+	tmp := s.path + ".tmp"
+	if os.WriteFile(tmp, keep, 0o600) != nil { //nolint:gosec // the path is gitpal's own history file inside .git, not user input
+		return
+	}
+	if os.Rename(tmp, s.path) != nil {
+		_ = os.Remove(tmp)
+	}
 }
 
 // Entries returns every readable entry, oldest first. Lines that cannot be

@@ -114,3 +114,35 @@ func TestDiscardDropsEverything(t *testing.T) {
 
 	assert.False(t, logger.Enabled(context.Background(), slog.LevelError))
 }
+
+func TestALargeLogIsRotatedWhenOpened(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "gitpal.log")
+	require.NoError(t, os.WriteFile(path+".1", []byte("oldest\n"), 0o600))
+	require.NoError(t, os.WriteFile(path, []byte("old run\n"), 0o600))
+
+	// Below the limit nothing moves.
+	logger, closer, err := logging.Open(logging.Options{Path: path, Level: slog.LevelInfo, MaxBytes: 1 << 20})
+	require.NoError(t, err)
+	logger.Info("second run")
+	require.NoError(t, closer.Close())
+	old, err := os.ReadFile(path + ".1")
+	require.NoError(t, err)
+	assert.Equal(t, "oldest\n", string(old))
+
+	// At the limit the current log becomes the one backup kept; the older
+	// backup goes.
+	logger, closer, err = logging.Open(logging.Options{Path: path, Level: slog.LevelInfo, MaxBytes: 10})
+	require.NoError(t, err)
+	logger.Info("third run")
+	require.NoError(t, closer.Close())
+
+	old, err = os.ReadFile(path + ".1")
+	require.NoError(t, err)
+	assert.Contains(t, string(old), "old run")
+	assert.Contains(t, string(old), "second run")
+	assert.NotContains(t, string(old), "oldest")
+	current, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Contains(t, string(current), "third run")
+	assert.NotContains(t, string(current), "second run")
+}
