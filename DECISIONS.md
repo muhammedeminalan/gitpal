@@ -576,6 +576,22 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
   (TR + EN). `completion` alt komutlarının (bash / zsh / …) uzun açıklamaları cobra'nın İngilizcesi kaldı.
 - **Performans:** ölçüm yapılmadı. Bilinen maliyetler A-036'da (GUI yoklaması, log 300 sınırı).
 
+### A-038 — macOS GUI derlemesinde Wails'in "deprecated" uyarısı susturuldu (2026-11-11)
+`make gui` macOS'ta her temiz derlemede şunu basıyordu:
+`WailsContext.m:197: warning: 'setShowsBaselineSeparator:' is deprecated: first deprecated in macOS 15.0`.
+- **Neden:** uyarı gitpal'ın kodundan değil, Wails'in kendi Objective-C kodundan geliyor (repoda C/Objective-C kodu yok).
+  Kullanılan Wails 2.17.1 en güncel v2 sürümü; yükselterek giderilemiyor. Çağrı macOS 15+'ta etkisiz, yalnızca araç çubuğu
+  ayırıcısını ilgilendiriyor; derleme her iki durumda da başarılı.
+- **Karar:** `Makefile` içinde `GUI_CFLAGS` (yalnızca Darwin): `-O2 -g -Wno-deprecated-declarations`, `gui` hedefine
+  `CGO_CFLAGS` olarak verilir. `-O2 -g` Go'nun varsayılanıdır; `CGO_CFLAGS` verilince varsayılan düştüğü için açıkça yazılır.
+- **Bedeli:** macOS GUI derlemesinde bağımlılıkların C kodundan gelecek başka "deprecated" uyarıları da görünmez olur.
+  Derleme hataları ve diğer uyarı türleri etkilenmez.
+- **Doğrulama:** boş derleme önbelleğiyle iki derleme: eski bayraklarla 1 uyarı, yeni bayraklarla 0 uyarı; ikisi de başarılı.
+  (Go bu cgo uyarısını önbellekten derlerken yeniden basmıyor; bu yüzden uyarı yalnızca temiz derlemede görünüyordu.)
+- **Kapsam dışı bırakılan:** `ci.yml` ve `release.yml` GUI'yi `make gui` ile değil doğrudan `go build` ile derliyor; oradaki
+  macOS loglarında uyarı görünmeye devam eder (zararsız).
+- **Ne zaman kaldırılır:** Wails bu çağrıyı kaldırdığında `GUI_CFLAGS` satırı silinmeli.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
@@ -586,6 +602,7 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
 | M2 testlerinin Windows ve macOS'ta koşması | `main`'e alınınca (CI); yerelde yalnızca Linux + 5 platform derleme |
 | `make cover` bulut konteynerinde düşüyor (`go: no such tool "covdata"`) | Ortam sorunu, `main`'de de aynı; kapsam elle ölçüldü. Mac ve CI'da beklenmiyor |
 | GUI'de SSH parola / host anahtarı istemi | V1.1 (A-020, A-036) |
+| `npm audit`: 2 düşük önem (`deepmerge`, `@sveltejs/vite-plugin-svelte` üzerinden) | Düzeltme yayımlanmadı ("No fix available"); yalnızca derleme aracı, uygulamaya girmiyor. `vite-plugin-svelte` güncellenince yeniden bakılacak |
 | GUI: fsnotify, sanal liste, ilerleme/iptal, 3 yönlü çakışma, rebase düzenleyici, GitHub ekranı | V1.1 (A-036) |
 
 ## Milestone durumu

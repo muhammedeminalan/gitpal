@@ -32,6 +32,14 @@ GUI_TAGS ?= gui,production$(if $(filter Linux,$(shell uname -s 2>/dev/null)),$(c
 comma := ,
 # macOS: Wails'in kullandığı UTType için (wails CLI'sı da bunu ekler).
 GUI_LDFLAGS ?= $(if $(filter Darwin,$(shell uname -s 2>/dev/null)),-framework UniformTypeIdentifiers)
+# macOS: Wails 2.17.1'in (en güncel v2) kendi Objective-C kodu, Apple'ın macOS 15'te
+# kullanımdan kaldırdığı `setShowsBaselineSeparator:` çağrısını içeriyor ve her derlemede
+# "deprecated" uyarısı basıyor. Kod gitpal'ın değil (repoda C/Objective-C kodu yok) ve
+# yükseltilecek daha yeni bir v2 sürümü yok; bu yüzden yalnızca bu uyarı türü susturulur.
+# Wails bunu düzelttiğinde bu satır silinmeli. "-O2 -g" Go'nun varsayılanıdır: CGO_CFLAGS
+# verilince varsayılan düştüğü için açıkça yazılır. Diğer platformlarda boş kalır ve Go
+# kendi varsayılanını kullanır.
+GUI_CFLAGS ?= $(if $(filter Darwin,$(shell uname -s 2>/dev/null)),-O2 -g -Wno-deprecated-declarations)
 
 .PHONY: frontend
 frontend: ## Arayüzün web kısmını derle (frontend/dist)
@@ -39,7 +47,7 @@ frontend: ## Arayüzün web kısmını derle (frontend/dist)
 
 .PHONY: gui
 gui: frontend ## bin/gitpal-gui üret (masaüstü arayüzü)
-	CGO_ENABLED=1 CGO_LDFLAGS='$(GUI_LDFLAGS)' $(GO) build -trimpath -tags '$(GUI_TAGS)' -ldflags '$(LDFLAGS)' -o bin/gitpal-gui ./cmd/gitpal-gui
+	CGO_ENABLED=1 CGO_CFLAGS='$(GUI_CFLAGS)' CGO_LDFLAGS='$(GUI_LDFLAGS)' $(GO) build -trimpath -tags '$(GUI_TAGS)' -ldflags '$(LDFLAGS)' -o bin/gitpal-gui ./cmd/gitpal-gui
 
 .PHONY: install
 install: ## gitpal'ı GOPATH/bin altına kur
