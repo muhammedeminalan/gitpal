@@ -689,7 +689,9 @@ dosyada adın önüne `*` koyuyor, betik bunu tanımıyordu. Betikler artık iki
 goreleaser'ın biçimine çevrildi.
 `gui (ubuntu-latest)` dört koşuda apt adımında takıldı; log: runner Ubuntu aynalarını DNS'te çözemiyor
 (`Temporary failure resolving 'archive.ubuntu.com'`), bizim koddan değil. Adım artık etkileşimsiz, 10 dk zaman aşımlı;
-GUI işi `ubuntu-24.04` imajına sabitlendi (26.04 imajının apt ayna ayarı şüpheli — doğrulanmadı).
+GUI işi `ubuntu-24.04` imajına sabitlendi. 24.04'te de aynı hata (`azure.archive.ubuntu.com` erişilemiyor):
+imaj değil, GitHub/Azure'un Ubuntu aynası sorunu. 2026-11-11 15:07 itibarıyla `gui (ubuntu)` kırmızı, diğer 10 iş yeşil;
+ayna düzelince yeniden koşturulmalı (Actions → Re-run failed jobs). Linux GUI derlemesi yerelde (24.04) çalışıyor.
 **Doğrulanmayan:** gerçek bir tag ile sürüm iş akışı hiç koşmadı (ilk tag'de görülecek); install.ps1 yalnızca CI'da
 denenecek (bu ortamda PowerShell yok).
 
