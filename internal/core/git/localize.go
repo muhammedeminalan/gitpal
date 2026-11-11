@@ -81,10 +81,13 @@ const (
 	ArgInvalidRemote ArgCode = "invalid_remote"
 	// ArgInvalidRev: a revision (commit, tag, range) is unusable in the same way.
 	ArgInvalidRev ArgCode = "invalid_rev"
+	// ArgInvalidStrategy: a pull strategy is none of merge, rebase, ff-only.
+	ArgInvalidStrategy ArgCode = "invalid_strategy"
 )
 
 var allArgCodes = []ArgCode{
 	ArgNoPaths, ArgInvalidPath, ArgEmptyMessage, ArgInvalidBranch, ArgInvalidRemote, ArgInvalidRev,
+	ArgInvalidStrategy,
 }
 
 var argMessages = map[ArgCode]i18n.Key{
@@ -94,6 +97,8 @@ var argMessages = map[ArgCode]i18n.Key{
 	ArgInvalidBranch: i18n.MsgGitArgInvalidBranch,
 	ArgInvalidRemote: i18n.MsgGitArgInvalidRemote,
 	ArgInvalidRev:    i18n.MsgGitArgInvalidRev,
+
+	ArgInvalidStrategy: i18n.MsgGitArgInvalidStrategy,
 }
 
 // ArgError reports an argument refused before git was started. It is not a

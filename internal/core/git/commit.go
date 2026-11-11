@@ -93,7 +93,7 @@ func (r *Runner) Commit(ctx context.Context, dir string, opts CommitOptions) (Co
 
 	if _, err := r.Run(ctx, cmd); err != nil {
 		var gerr *Error
-		if errorsAs(err, &gerr) && gerr.Kind == KindUnknown && r.commitHookInstalled(ctx, dir) {
+		if errorsAs(err, &gerr) && gerr.Kind == KindUnknown && r.hookInstalled(ctx, dir, commitHooks...) {
 			// git adds nothing of its own when a hook exits non-zero, so an
 			// unexplained failure with a hook in place is the hook's doing.
 			gerr.Kind = KindHookFailed
@@ -124,12 +124,12 @@ func (r *Runner) commitRequireStaged(ctx context.Context, dir string) error {
 	return &Error{Kind: KindNothingToCommit, Args: []string{"commit"}, ExitCode: -1}
 }
 
-// commitHookInstalled reports whether a hook that can refuse a commit exists.
+// hookInstalled reports whether any of the named hooks exists and can run.
 // `--git-path` honours core.hooksPath and linked worktrees. It answers false
 // when it cannot tell: the caller is already reporting another error.
-func (r *Runner) commitHookInstalled(ctx context.Context, dir string) bool {
+func (r *Runner) hookInstalled(ctx context.Context, dir string, names ...string) bool {
 	args := []string{"rev-parse"}
-	for _, name := range commitHooks {
+	for _, name := range names {
 		args = append(args, "--git-path", "hooks/"+name)
 	}
 	res, err := r.Run(ctx, Cmd{Dir: dir, Args: args})

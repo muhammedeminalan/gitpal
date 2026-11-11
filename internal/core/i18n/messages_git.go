@@ -43,6 +43,8 @@ const (
 	MsgGitArgInvalidBranch Key = "git.arg.invalid_branch"
 	MsgGitArgInvalidRemote Key = "git.arg.invalid_remote"
 	MsgGitArgInvalidRev    Key = "git.arg.invalid_rev"
+
+	MsgGitArgInvalidStrategy Key = "git.arg.invalid_strategy"
 )
 
 var gitMessages = map[Key]message{
@@ -205,5 +207,9 @@ var gitMessages = map[Key]message{
 	MsgGitArgInvalidRev: {
 		tr: "Geçersiz revizyon: %q.",
 		en: "Invalid revision: %q.",
+	},
+	MsgGitArgInvalidStrategy: {
+		tr: "Geçersiz pull stratejisi: %q. `merge`, `rebase` ya da `ff-only` olmalı.",
+		en: "Invalid pull strategy: %q. It must be `merge`, `rebase` or `ff-only`.",
 	},
 }
