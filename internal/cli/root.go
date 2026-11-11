@@ -42,7 +42,7 @@ func (a *app) newRootCmd() *cobra.Command {
 		a.newPushCmd(), a.newPullCmd(), a.newFetchCmd(),
 		a.newBranchCmd(), a.newLogCmd(),
 		a.newUndoCmd(), a.newBackupsCmd(), a.newHistoryCmd(),
-		a.newConfigCmd(), a.newInitCmd(), a.newCloneCmd(),
+		a.newConfigCmd(), a.newInitCmd(), a.newCloneCmd(), a.newAuthCmd(),
 	)
 	// Without a subcommand: the interactive screen for a person, help for a
 	// script.

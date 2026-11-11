@@ -97,3 +97,18 @@ func TestScanJunkIsGroupedByDirectory(t *testing.T) {
 	assert.Equal(t, "node_modules", other.group)
 	assert.Equal(t, ".DS_Store", scanPath(".DS_Store").group)
 }
+
+func TestRedactSecrets(t *testing.T) {
+	token := "ghp" + "_" + strings.Repeat("a1B2", 9)
+	in := "url = x\ntoken: " + token + "\npassword = \"kT9#mQ2vLp8x\"\npassword = \"changeme-example\"\n-----BEGIN RSA PRIVATE KEY-----"
+	out := RedactSecrets(in)
+	assert.NotContains(t, out, token)
+	assert.NotContains(t, out, "kT9#mQ2vLp8x")
+	assert.Contains(t, out, "changeme-example", "placeholders stay")
+	assert.Contains(t, out, "url = x")
+	assert.Equal(t, 3, strings.Count(out, Redacted))
+
+	assert.True(t, IsSecretFile("config/.env"))
+	assert.False(t, IsSecretFile(".env.example"))
+	assert.False(t, IsSecretFile("main.go"))
+}

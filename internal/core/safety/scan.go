@@ -124,3 +124,27 @@ func scanPath(p string) pathFinding {
 	}
 	return pathFinding{}
 }
+
+// Redacted replaces a secret in text sent to an AI provider.
+const Redacted = "[REDACTED]"
+
+// RedactSecrets replaces every credential the safety layer recognizes in
+// text with Redacted. Assignments whose value looks like a placeholder are
+// left alone.
+func RedactSecrets(text string) string {
+	for _, p := range secretPatterns {
+		text = p.re.ReplaceAllString(text, Redacted)
+	}
+	return assignmentRE.ReplaceAllStringFunc(text, func(match string) string {
+		m := assignmentRE.FindStringSubmatch(match)
+		if looksLikePlaceholder(m[2]) {
+			return match
+		}
+		return strings.Replace(match, m[2], Redacted, 1)
+	})
+}
+
+// IsSecretFile reports whether a path names a kind of file that holds
+// credentials (.env, private keys, keystores). Templates such as
+// .env.example are not.
+func IsSecretFile(path string) bool { return scanPath(path).code == CodeSecretFile }

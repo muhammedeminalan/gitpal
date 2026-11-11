@@ -438,6 +438,38 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
   olmadan soru-cevap akışlarını sınar; TUI modelleri tuş vuruşlarıyla ayrıca test edilir.
 - git paketine: `Init`, `Clone` (ilerleme çıktısı satır satır, kimlik bilgisi redakte edilerek akar — `Cmd.Progress`).
 
+### A-033 — AI commit mesajı (M4, 2026-11-11)
+- `internal/core/ai`: spec 6.6'daki `Provider` arayüzü; sağlayıcılar Anthropic, OpenAI uyumlu, Ollama.
+- **Anthropic resmî Go SDK'sı** (`anthropic-sdk-go/v2`) ile çağrılır (Claude API rehberinin kuralı: dilin resmî SDK'sı varsa
+  düz HTTP yazılmaz). Varsayılan model `claude-opus-5-5`. İstekte sunucu taraflı yedek model açık
+  (`server-side-fallback-2026-07-01` + `fallbacks: "default"`): güvenlik sınıflandırıcısı reddederse aynı çağrıda başka bir
+  model cevaplar; yine de `refusal` gelirse `KindRefused` → elle yazmaya düşülür. SDK'nın kendi yeniden deneme davranışı
+  (429 / 5xx için 2 kez) korunur.
+- OpenAI uyumlu ve Ollama sağlayıcıları düz HTTP (spec, "tek sağlayıcıya bağımlılık olmasın"). Bu ikisinde **model adı
+  zorunlu**: gitpal başka şirketlerin model adlarını tahmin etmez; boşsa `ai.model ayarla` hatası.
+- Adres değiştirme: `GITPAL_AI_BASE_URL` (OpenAI uyumlu başka bir servis, uzaktaki Ollama, test sunucusu).
+- Anahtar: önce keychain (`gitpal auth ai`, ekranda görünmeden okunur, boru ile de verilebilir), yoksa `ANTHROPIC_API_KEY` /
+  `OPENAI_API_KEY` ortam değişkeni (keychain olmayan makineler için). Anahtar hiçbir çıktıda, hata metninde, logda yer almaz;
+  `ai.Error` sağlayıcının ham hata metnini taşımaz (istek içeriğini yansıtabilir), yalnızca tür + HTTP durum kodu.
+- Gönderilen yük (`ai.Prepare`):
+  - sır dosyaları (`.env*`, `*.pem`, `*.key`, `id_rsa*`, keystore…) ve özel anahtar içeren dosyalar **hiç gönderilmez**,
+    yalnızca adı geçer; kullanıcıya hangilerinin gönderilmediği söylenir;
+  - her satır güvenlik katmanının kalıplarıyla + entropi kontrolüyle temizlenir (`[REDACTED]`). Entropi eşiği 4,2 bit/karakter,
+    harf + rakam karışık, ≥ 24 karakter; hex (commit hash'leri, ≤ 4,0) ve harf-yalnız tanımlayıcılar dokunulmaz kalır;
+  - lock, minified (`.min.` ya da 1000+ karakterlik satır) ve binary dosyalar yalnızca "değişti" notu;
+  - bütçe ~48.000 karakter (~12.000 token). **Spec'ten sapma:** aşılınca dosya başına ayrı model çağrısıyla özetleme yerine her
+    dosyaya eşit pay verilip kesilir (tek çağrı: daha ucuz, deterministik, yine her dosya görünür). Gönderilen karakter ve
+    yaklaşık token sayısı kullanıcıya gösterilir.
+  - Son 10 commit mesajı ve branch adı da aynı temizlikten geçer.
+- Cevap JSON istenir (`messages`, `split`); kod bloğu ya da cümle içindeki JSON da okunur, düz metin tek öneri sayılır. Boş /
+  kullanılamaz cevapta en fazla 2 kez yeniden sorulur, sonra `KindEmpty` → elle yaz (spec 6.5).
+- Onay (spec 6.4): ilk kullanımda sorulur, "evet" `ai.consent_given: true` olarak genel ayar dosyasına yazılır. Terminal yoksa
+  onaysız gönderim yok, hata. Ollama için de sorulur (adres uzakta olabilir).
+- `commit` `-m`'siz çalışınca: terminal + sağlayıcı + onay + anahtar varsa önce AI önerir (numara seç, `r`/`y` yeniden üret,
+  `m` elle yaz), yoksa elle yazdırır. `--ai` açıkça ister; script'te (`--ai`, terminal yok) ilk öneri kullanılır. AI hatası
+  commit'i hiçbir zaman engellemez — yalnızca script `--ai` istediyse hata olur.
+- PR başlığı / açıklaması için `GeneratePRDescription` aynı yük ve temizlikle hazır (M6 kullanacak).
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
@@ -507,11 +539,16 @@ Komutlar, `save` akışı, dosya seçici ve ana ekran (A-032). Doğrulama: lint 
 %92,3, 5 platform derleme. Gerçek ikiliyle elle denendi (init → save → discard reddi → log --graph).
 **Bilinen sınır:** TUI gerçek bir terminalde elle denenmedi (bu ortamda TTY yok); modeller tuş vuruşu testleriyle sınandı.
 
+### M4 — AI commit mesajı ✅ (2026-11-11)
+Sağlayıcılar, temizlik, büyük diff, onay, `commit --ai` / `save --ai`, `gitpal auth ai` (A-033). Zorunlu güvenlik testi
+(`.env` içeriği gönderilen yükte ve ağa giden istek gövdesinde yok) geçiyor. Doğrulama: lint 0, race testleri, kapsam %92,4,
+5 platform derleme. **Doğrulanmayan:** gerçek bir API anahtarıyla gerçek bir sağlayıcıya istek atılmadı (bu ortamda anahtar yok);
+sağlayıcılar sahte HTTP sunucularıyla sınandı. `gitpal save` artık add → AI commit → push akışını tamamlıyor (kabul kriteri 1).
+
 **Tahmini kalan süre** (tahmin, ölçüm değil):
 
 | Milestone | Süre |
 |---|---|
-| M4 AI commit mesajı | 2–3 saat |
 | M5 İleri git | 3–4 saat |
 | M6 GitHub | ~3 saat |
 | M7 GUI | 6–8 saat (en belirsiz) |

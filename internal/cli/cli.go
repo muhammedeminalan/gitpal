@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"github.com/muhammedeminalan/gitpal/internal/core/ai"
 	"github.com/muhammedeminalan/gitpal/internal/core/config"
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
 	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
@@ -75,6 +76,10 @@ type Env struct {
 	Dashboard func(ctx context.Context, opts tui.DashboardOptions) error
 	// Editor opens a file in the user's editor.
 	Editor func(ctx context.Context, path string) error
+	// NewAI builds the AI provider.
+	NewAI func(s ai.Settings) (ai.Provider, error)
+	// ReadSecret reads a key without showing it; nil reads a plain line.
+	ReadSecret func() (string, error)
 }
 
 // SystemEnv returns the real environment of the running process.
@@ -97,8 +102,19 @@ func SystemEnv() Env {
 		Pick:      tui.Pick,
 		Dashboard: tui.RunDashboard,
 		Editor:    openEditor,
+		NewAI:     ai.New,
+		ReadSecret: func() (string, error) {
+			fd := int(os.Stdin.Fd()) //nolint:gosec // a file descriptor always fits in an int
+			if !term.IsTerminal(fd) {
+				return "", errNotTerminal
+			}
+			b, err := term.ReadPassword(fd)
+			return string(b), err
+		},
 	}
 }
+
+var errNotTerminal = errors.New("standard input is not a terminal")
 
 func isTerminal(w io.Writer) bool {
 	file, ok := w.(*os.File)
