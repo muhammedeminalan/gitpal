@@ -8,4 +8,5 @@ var catalog = mergeCatalogs(
 	configMessages,
 	doctorMessages,
 	gitMessages,
+	safetyMessages,
 )

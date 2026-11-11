@@ -76,7 +76,13 @@ Kullanıcı repoyu kendi komutuyla açtı ve push etti: <https://github.com/muha
 ### S-010 — M1'in kalanı bulut oturumunda, `claude/serene-mccarthy-w86sgq` branch'inde (2026-11-11)
 `m1-git-core` ve `fix/windows-cli-tests` bu branch'e alındı; 6 modül burada sırayla yazıldı (S-008'deki paralel deneme
 tekrarlanmadı), her modül ayrı commit. `main`'e dokunulmadı. CI yalnızca `main`'e push'ta ve pull request'te koştuğu için
-bu branch'te **hiç CI koşmadı**: Windows ve macOS sonuçları pull request açılınca görülecek. PR açmak kullanıcının kararı.
+bu branch'te CI koşmadı.
+
+### S-011 — M1 `main`'de; CI üç işletim sisteminde yeşil (2026-11-11)
+Kullanıcının isteğiyle M1 `main`'e fast-forward edildi (`e6e724b..419cb40`). Tetiklenen CI koşusu
+([run 42986662180](https://github.com/muhammedeminalan/gitpal/actions/runs/42986662180)) tamamen yeşil: lint, kapsam,
+Linux, **macOS ve Windows** testleri. M1 için "Windows'ta denenmedi" kaydı böylece kapandı; hook testlerinin Windows'ta
+Git for Windows'un `sh`'ıyla çalıştığı varsayımı da doğrulandı. M2 aynı branch'te sürdü (`main` ile aynı noktadan).
 
 ## Mimari kararlar
 
@@ -325,14 +331,94 @@ gereken git ayarları ve yazılması gereken testler `docs/M1_PLAN.md` içinde. 
 - `pre-push` hook reddi `KindHookFailed`.
 - Yeni argüman kodu: `ArgInvalidStrategy`.
 
+### A-027 — git paketi: gitpal'ın kendi ref alanı, anlık görüntü, reset (2026-11-11)
+- `CreateRef` / `DeleteRef` / `Refs` **yalnızca `refs/gitpal/` altında** çalışır; başka her ref `ArgInvalidRev` ile reddedilir.
+  Ref'i doğrudan yazan fonksiyonların bir branch'i ya da tag'i oynatabilmesinin yolu yok. `CreateRef` var olanın üzerine yazmaz.
+- `WorktreeSnapshot`: `git stash create` — commit'lenmemiş değişiklikleri (stage dahil) index'e, çalışma alanına ve kullanıcının
+  stash listesine dokunmadan bir commit'e yazar. Untracked dosyalar dahil değil: gitpal'ın yaptığı hiçbir işlem onları silmiyor.
+  `ApplySnapshot` = `stash apply --index`; uymuyorsa hiçbir şeyi değiştirmeden başarısız olur.
+- `Reset(soft|mixed|hard)`: yalnızca isteneni yapar; onay ve yedek güvenlik katmanında.
+- `GitPath`: git dizini içindeki bir dosyanın mutlak yolu (linked worktree'de o worktree'nin kendi dizini).
+
+### A-028 — history (2026-11-11)
+- `.git/gitpal/history.jsonl`, satır başına bir JSON. Linked worktree'lerin her birinin kendi geçmişi var (HEAD de worktree'ye özel).
+- Yazılanlar: zaman, işlem, branch, önceki/sonraki HEAD, yedek ref'leri, hedef, dosya yolları. **Yazılmayanlar:** dosya içeriği,
+  commit mesajı, kimlik bilgisi. Başarısız işlemde yalnızca hata **türü** yazılır, hata metni değil.
+- Bozuk satır atlanır (yarım kalmış yazma tüm geçmişi götürmez). Her kayıt tek `write` ile eklenir.
+- `LastUndoable`: en yeni, başarılı, geri alınmamış ve kendisi `undo` olmayan kayıt.
+
+### A-029 — Güvenlik katmanı: model (2026-11-11)
+Çağıran yapmak istediğini bir `Operation` olarak tarif eder. `Guard.Assess` = kuru çalıştırma (risk, bulgular, etkiler, hangi
+onay gerekir, hangi yedek alınacak). `Guard.Do` = değerlendir → engelliyse dur → onay al → yedekle → çalıştır → geçmişe yaz.
+
+| Risk | Onay | `--yes` |
+|---|---|---|
+| Güvenli | yok | — |
+| Dikkat | tek evet | yeter |
+| Tehlikeli | kullanıcının kendi eveti + yedek | **yetmez** (`ErrConfirmationRequired`) |
+| Çok tehlikeli | branch adını yazmak | yetmez |
+
+Kuralların (spec 7.2) karşılığı:
+1. Korumalı branch'e zorla push: **her zaman engellenir**, lease ile bile. Yerel adı başka olup korumalı branch'e push eden
+   branch de (`branch.<ad>.merge`) aynı kurala girer. Korumalı liste `release/*` gibi desen kabul eder.
+2. Düz `--force` yok (A-019); korumasız branch'e zorla push "çok tehlikeli": branch adı yazılır, uzaktaki eski uç yedeklenir.
+3. Push edilmiş commit'i amend / reset: uyarı + risk "tehlikeli"ye çıkar.
+4. Kirli çalışma alanıyla pull / switch / reset --hard: sormadan **otomatik anlık görüntü** alınır (spec "stash önerilir *veya*
+   otomatik güvenli stash" diyor; çalışma alanını bozmayan ikincisi seçildi).
+5. Push öncesi: uzak branch ilerideyse (son fetch'e göre) engellenir. Yalnızca branch'in kendi upstream'ine push'ta bakılır.
+6. Korumalı branch'e doğrudan commit: uyarı + "yeni branch açılsın mı" önerisi (öneriyi sunmak arayüzün işi, M3).
+7. Commit öncesi tarama: eklenen satırlarda kimlik bilgisi (8 bilinen biçim + `password = "…"` kalıbı), sır dosyası adları,
+   büyük dosya, bağımlılık / derleme çıktısı (dizin başına tek bulgu). **Bulgu sırrın kendisini asla taşımaz**, yalnızca türünü.
+   Silinen satırlar taranmaz. Büyük dosya eşiği için stage'deki kopya yerine çalışma alanındaki dosyanın boyutuna bakılır
+   (dosya başına git çağrısından kaçınmak için; stage'den sonra değişen dosyada sapabilir).
+8. Detached HEAD'de commit: uyarı.
+9. Merge / rebase yarımken amend, reset, pull, switch, zorla push engellenir; merge'ü bitiren commit ve dosya discard serbest.
+10. Kuru çalıştırma özeti: `Assessment.Effects` (atılacak dosyalar, branch'ten düşecek commit sayısı, uzakta ezilecek commit sayısı…).
+
+Ek kararlar:
+- Yedekler **onaydan sonra** alınır: reddedilen işlem arkasında yedek bırakmaz.
+- Onay, gösterilen duruma verilir: kullanıcı cevaplayana kadar HEAD ya da branch değiştiyse işlem `ErrRepositoryChanged` ile durur.
+- Branch silme: kaybolacak commit yoksa (HEAD'de ya da bir remote'ta duruyorsa) yedek ref'i de alındığı için silme `-D` ile
+  yapılır; git'in kendi "merged" ölçütü yalnızca upstream ve HEAD'e baktığından güvenle silinebilecek bazı branch'leri reddediyordu.
+  Kaybolacak commit varsa `Force` olmadan **engellenir**, `Force` ile "tehlikeli" + yedek.
+- Çıkış kodu eşlemesi (spec 8) arayüzde yapılacak: `*BlockedError` → 3, `ErrDeclined` → 2.
+
+### A-030 — Yedekler (2026-11-11)
+- Commit yedeği `refs/gitpal/backup/<zaman>-<işlem>`, commit'lenmemiş değişikliklerin yedeği
+  `refs/gitpal/backup-worktree/<zaman>-<işlem>`. Spec tek önek söylüyordu; ikisini ada bakarak ayırt edebilmek için ikiye bölündü.
+  Zaman UTC, milisaniyeli (`20261111T090100000Z`); aynı milisaniyede ikinci yedek bir sonraki boş adı alır.
+- Yedek HEAD'i değil **risk altındaki commit'i** tutar: branch silmede silinen ucu, zorla push'ta uzaktaki eski ucu.
+- `PruneBackups`: saklama süresinden (varsayılan 30 gün) **eski** olanları siler; tam 30 günlük olan kalır.
+- `RestoreBackup`: çalışma alanı yedeği üstüne uygulanır; silinen branch'in yedeği branch'i (adı geçmişten bulunarak) yeniden
+  oluşturur; diğer commit yedekleri `reset --hard` olarak `Do`'dan geçer (kendi onayı ve yedeğiyle).
+
+### A-031 — Undo (2026-11-11)
+Undo yalnızca repo işlemin bıraktığı yerde duruyorsa ilerler; değilse hiçbir şeyi değiştirmeden nedenini söyler.
+
+| İşlem | Geri alma | Reddedilir |
+|---|---|---|
+| commit, amend | `reset --soft <önceki>` (değişiklikler stage'de kalır) | push edilmişse; üstüne commit atılmışsa; reponun ilk commit'iyse |
+| discard | dosyalar çalışma alanı yedeğinden geri yazılır | dosya sonradan yeniden düzenlenmişse; yedek silinmişse |
+| reset --hard | `reset --hard <önceki>` + anlık görüntü geri uygulanır | commit'lenmemiş değişiklik varsa; HEAD ilerlemişse |
+| reset soft / mixed | aynı kipte geri | HEAD ilerlemişse |
+| branch silme | branch yedekten yeniden oluşturulur | aynı adla yeni branch açılmışsa |
+| pull | `reset --hard <önceki>` | commit'lenmemiş değişiklik varsa; HEAD ilerlemişse |
+| switch | önceki branch'e dönülür | önceki durum detached HEAD ise |
+| push, zorla push | — | her zaman (`revert` önerilir) |
+
+HEAD'i sert biçimde geri taşıyan undo'lar önce kendi yedeğini alır. Undo'nun kendisi geçmişe `undo` olarak yazılır ve
+tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer geriye yürür.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
 |---|---|
 | Log rotasyonu | M8 |
 | Cobra sabit metinlerinin çevirisi | M8 |
-| Windows'ta 4 CLI testi (ilk CI koşusu) | Düzeltme `b60c051` bu branch'te; **CI'da henüz doğrulanmadı** (S-010) |
-| M1 testlerinin Windows ve macOS'ta koşması | Pull request açılınca (S-010); yerelde yalnızca Linux + 5 platform derleme |
+| M2 testlerinin Windows ve macOS'ta koşması | `main`'e alınınca (CI); yerelde yalnızca Linux + 5 platform derleme |
+| `gitpal undo`, `gitpal backups` komutları; config → `safety.Policy` eşlemesi | M3 (çekirdek M2'de hazır) |
+| merge / rebase / cherry-pick / stash drop'un güvenlik katmanından geçmesi | M5 (bu işlemler M5'te geliyor) |
+| `history.jsonl` boyut sınırı / rotasyonu | M8 |
 | `make cover` bulut konteynerinde düşüyor (`go: no such tool "covdata"`) | Ortam sorunu, `main`'de de aynı; kapsam elle ölçüldü. Mac ve CI'da beklenmiyor |
 | `.goreleaser.yaml`, `gp` kısa adı | M8 |
 | `init`, `clone` (ilerleme göstergeli), `log --graph` çizimi | M3 (A-020) |
@@ -357,51 +443,42 @@ lint ✅, kapsam ✅, testler Linux ✅ ve macOS ✅, **Windows ❌**. Windows't
   (test ortamı mı, renk tespiti mi belli değil).
 Bu yüzden `main` şu an GitHub'da kırmızı görünür. Düzeltme `fix/windows-cli-tests` (`b60c051`) ile yazıldı ve M1 branch'ine alındı; `main`'e M1 ile birlikte girecek.
 
-### M1 — Git çekirdeği ✅ (2026-11-11) — `main`'e alınmayı bekliyor
-**Nerede:** branch `claude/serene-mccarthy-w86sgq` (GitHub'da). `main` hâlâ M0'da. `m1-git-core` ve `fix/windows-cli-tests`
-bu branch'in içinde; ikisi de artık gereksiz.
+### M1 — Git çekirdeği ✅ (2026-11-11) — `main`'de
+6 modül + ortak temel (A-016 … A-026). `main` @ `419cb40`; CI üç işletim sisteminde yeşil (S-011).
+`m1-git-core` ve `fix/windows-cli-tests` branch'leri artık gereksiz, silinebilir.
+**Hâlâ doğrulanmayan:** git 2.30 – 2.42 (yalnızca 2.43 ve CI'daki güncel sürümlerle koşuldu).
 
-**Biten:** ortak temel (A-016 … A-018) + 6 modülün tamamı:
-
-| Modül | Dosya | Karar |
-|---|---|---|
-| status | `status.go` | A-021 |
-| stage + commit | `stage.go`, `commit.go` | A-022 |
-| diff | `diff.go` | A-023 |
-| log | `log.go` | A-024 |
-| branch | `branch.go` | A-025 |
-| remote | `remote.go` | A-026 |
-
-Ayrıca: modül yolu düzeltildi (A-001), Windows CLI test düzeltmesi alındı, 3 yeni hata türü + 1 argüman kodu (TR + EN).
+### M2 — Güvenlik katmanı ✅ (2026-11-11) — `claude/serene-mccarthy-w86sgq` branch'inde
+**Biten:**
+- `internal/core/git`: `refs/gitpal/` ref'leri, çalışma alanı anlık görüntüsü, `Reset`, `GitPath` (A-027)
+- `internal/core/history`: `history.jsonl` (A-028)
+- `internal/core/safety`: risk sınıfları, 10 kural, sır / büyük dosya taraması, `Guard.Assess` / `Do`, yedekler
+  (liste / geri yükle / süresi dolanı sil), `Undo` (A-029 … A-031)
+- TR + EN mesajlar: 14 bulgu, 14 ret / undo nedeni
 
 **Doğrulama** (Linux, git 2.43, Go 1.26):
-- `golangci-lint run ./...` (v2.15.0, CI ile aynı sürüm) → 0 sorun
-- `go test -race -count=1 ./...` → geçti
-- `internal/core` kapsamı %93,9 (eşik %80) — `make cover` bu konteynerde ortam sorunu yüzünden düştüğü için aynı komut elle ölçüldü
-- `make cross` → 5 platform derleme + vet temiz
-- "Düşmanca ayar" testlerinin gerçekten yakaladığı, bayraklar tek tek kaldırılarak sınandı (mutasyon). Yakalanmayan iki bayrak
-  var: pull'da `--ff-only` yanındaki `--no-rebase` ve `--rebase` yanındaki `--ff`. git 2.43'te gereksizler; 2.34 öncesi için
-  bırakıldı, o sürümlerde **denenmedi**.
+- lint 0 sorun; `go test -race ./...` geçti; `internal/core` kapsamı %92,7; 5 platform derleme + vet temiz
+- 10 güvenlik kuralı tek tek bozularak sınandı (mutasyon): hepsi en az bir testi düşürdü — korumalı branch engeli, `--yes`'in
+  tehlikeli işlemi onaylayamaması, branch adı yazma, "repo değişti" kontrolü, iki yedek türü, undo'nun "ilerledi" ve
+  "push edildi" kontrolleri, push öncesi engel, birleşmemiş branch engeli.
 
-**Doğrulanmayan:**
-- Windows ve macOS'ta test koşusu (S-010). Riskli yerler: hook testleri (Windows'ta hook'lar Git for Windows'un `sh`'ıyla
-  çalışır varsayımı), `rev-parse --git-path` çıktısının yol biçimi.
-- git 2.30 – 2.42. Kullanılan bayrakların hepsi 2.30'da var olmalı (en yenileri: `push --force-if-includes` ve
-  `rev-parse --end-of-options`, ikisi de 2.30), ama eski bir git'le koşulmadı.
-- Planın 4. adımındaki "bağımsız gözle inceleme" ayrı bir tur olarak yapılmadı; yerine mutasyon kontrolleri var.
+**Doğrulanmayan / bilinen sınırlar:**
+- Windows ve macOS'ta M2 testleri koşmadı (CI yalnızca `main` ve PR'da).
+- Sır taraması kalıp eşleştirmedir: bilinmeyen biçimdeki bir anahtarı kaçırır, sıradan bir dizgeyi sır sanabilir. Bulgular
+  uyarıdır, engel değil.
+- Push öncesi "geride" kontrolü son fetch'e dayanır; fetch edilmemiş yeni commit'leri git'in kendisi reddeder (`KindRejected`).
+- Kullanıcının göreceği bir şey henüz yok: `gitpal undo` / `gitpal backups` komutları ve onay ekranı M3'te.
 
 **Sıradaki adımlar:**
-1. Pull request aç (`claude/serene-mccarthy-w86sgq` → `main`): CI üç işletim sisteminde koşar. Windows'ta düşen çıkarsa düzelt.
-2. Birleşince `m1-git-core` ve `fix/windows-cli-tests` branch'lerini sil.
-3. M2 — Güvenlik katmanı: risk sınıfları, kurallar, backup ref'leri, `history.jsonl`, `undo`. M1'in buna bıraktıkları:
-   `Restore` / `DeleteBranch(force)` / `Push(ForceWithLease)` çevresine onay + yedek; pull öncesi kirli çalışma alanı;
-   `RemoteContains` ile "push edilmiş commit'i amend etme" uyarısı; `AheadBehind` ile push öncesi kontrol.
+1. M2'yi `main`'e al (CI Windows / macOS'ta koşar).
+2. M3 — CLI + TUI: cobra komutları, `save` akışı, interaktif seçim ekranları. Buradaki her komut `safety.Guard` üzerinden
+   çalışacak; `config.SafetyConfig` → `safety.Policy` eşlemesi, onay ekranı (`Approver`), çıkış kodları 2 / 3,
+   `--dry-run` = `Assess`, `--explain` = `git.WithObserver`.
 
 **Tahmini kalan süre** (tahmin, ölçüm değil):
 
 | Milestone | Süre |
 |---|---|
-| M2 Güvenlik katmanı | ~2 saat |
 | M3 CLI + TUI | 3–4 saat |
 | M4 AI commit mesajı | 2–3 saat |
 | M5 İleri git | 3–4 saat |
