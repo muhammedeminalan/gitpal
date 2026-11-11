@@ -9,9 +9,14 @@ import (
 	"syscall"
 
 	"github.com/muhammedeminalan/gitpal/internal/cli"
+	"github.com/muhammedeminalan/gitpal/internal/core/git"
 )
 
 func main() {
+	// git starts gitpal as its editor during an interactive rebase.
+	if handled, code := git.RunEditorHelper(os.Args[1:]); handled {
+		os.Exit(code)
+	}
 	os.Exit(run())
 }
 

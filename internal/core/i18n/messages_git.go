@@ -45,6 +45,7 @@ const (
 	MsgGitArgInvalidRev    Key = "git.arg.invalid_rev"
 
 	MsgGitArgInvalidStrategy Key = "git.arg.invalid_strategy"
+	MsgGitArgUnsupportedFile Key = "git.arg.unsupported_file"
 )
 
 var gitMessages = map[Key]message{
@@ -207,6 +208,10 @@ var gitMessages = map[Key]message{
 	MsgGitArgInvalidRev: {
 		tr: "Geçersiz revizyon: %q.",
 		en: "Invalid revision: %q.",
+	},
+	MsgGitArgUnsupportedFile: {
+		tr: "%q parça parça eklenemez (binary, yeni, silinmiş ya da taşınmış dosya). Dosyanın tamamını ekle.",
+		en: "%q cannot be staged hunk by hunk (binary, new, deleted or moved). Stage the whole file.",
 	},
 	MsgGitArgInvalidStrategy: {
 		tr: "Geçersiz pull stratejisi: %q. `merge`, `rebase` ya da `ff-only` olmalı.",

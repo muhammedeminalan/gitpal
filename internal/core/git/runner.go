@@ -79,6 +79,9 @@ type Runner struct {
 	timeout  time.Duration
 	observer func(Event)
 	logger   *slog.Logger
+	// self is gitpal's executable, used as git's editor during an
+	// interactive rebase; empty means the running program.
+	self string
 }
 
 // Option configures a Runner.
@@ -107,6 +110,11 @@ func WithTimeout(d time.Duration) Option { return func(r *Runner) { r.timeout = 
 // WithObserver registers fn to be called after every command, successful or
 // not. It powers `--explain`, the GUI command panel and the operation history.
 func WithObserver(fn func(Event)) Option { return func(r *Runner) { r.observer = fn } }
+
+// WithSelf names the executable git starts as its editor during an
+// interactive rebase (see RunEditorHelper). The default is the running
+// program.
+func WithSelf(path string) Option { return func(r *Runner) { r.self = path } }
 
 // WithLogger sets the logger for command metadata. Command output is never
 // logged.

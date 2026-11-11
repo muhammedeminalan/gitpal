@@ -294,6 +294,14 @@ func TestDiffParseAwkwardContent(t *testing.T) {
 		assert.Equal(t, "new\nline ç \"q\" \\.txt", fd.Path)
 	})
 
+	t.Run("quoted name with a space keeps git's trailing tab", func(t *testing.T) {
+		fd := diffParseOne(t, "diff --git \"a/t\\tx y\" \"b/t\\tx y\"\n"+
+			"--- \"a/t\\tx y\"\t\n"+
+			"+++ \"b/t\\tx y\"\t\n"+
+			"@@ -1 +1 @@\n-a\n+b\n")
+		assert.Equal(t, "t\tx y", fd.Path)
+	})
+
 	t.Run("quoted rename", func(t *testing.T) {
 		fd := diffParseOne(t, "diff --git \"a/a\\tb\" b/plain\n"+
 			"similarity index 100%\n"+

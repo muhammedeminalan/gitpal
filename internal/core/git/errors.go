@@ -179,7 +179,9 @@ var stderrKinds = []struct {
 		"please tell me who you are", "unable to auto-detect email address", "empty ident name",
 		"no name was given and auto-detection is disabled", "no email was given and auto-detection is disabled",
 	}},
-	{KindNothingToCommit, []string{"nothing to commit", "no changes added to commit", "nothing added to commit"}},
+	{KindNothingToCommit, []string{
+		"nothing to commit", "no changes added to commit", "nothing added to commit", "is now empty",
+	}},
 	{KindStaleLease, []string{"(stale info)"}},
 	{KindRemoteDeclined, []string{"hook declined", "[remote rejected]", "protected branch"}},
 	{KindRejected, []string{

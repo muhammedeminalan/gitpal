@@ -26,6 +26,10 @@ type fakeReport struct {
 }
 
 func TestMain(m *testing.M) {
+	// git starts the test binary as its editor during interactive rebases.
+	if handled, code := RunEditorHelper(os.Args[1:]); handled {
+		os.Exit(code)
+	}
 	if mode := os.Getenv(fakeGitEnv); mode != "" {
 		os.Exit(runFakeGit(mode))
 	}

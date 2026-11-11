@@ -394,6 +394,9 @@ func diffSideName(value, prefix string) (string, error) {
 	if value == "/dev/null" {
 		return "", nil
 	}
+	// git adds a tab after a name containing a space, so that tools reading
+	// the line can tell where the name ends — quoted names included.
+	value = strings.TrimSuffix(value, "\t")
 	if strings.HasPrefix(value, `"`) {
 		name, err := diffUnquote(value)
 		if err != nil || !strings.HasPrefix(name, prefix) {
@@ -404,9 +407,7 @@ func diffSideName(value, prefix string) (string, error) {
 	if !strings.HasPrefix(value, prefix) {
 		return "", errors.New("malformed name")
 	}
-	// git adds a tab after a name containing a space, so that tools reading
-	// the line can tell where the name ends.
-	return strings.TrimSuffix(value[len(prefix):], "\t"), nil
+	return value[len(prefix):], nil
 }
 
 // diffNameFromGitLine reads the name from what follows "diff --git ", for a

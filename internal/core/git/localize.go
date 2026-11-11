@@ -83,11 +83,14 @@ const (
 	ArgInvalidRev ArgCode = "invalid_rev"
 	// ArgInvalidStrategy: a pull strategy is none of merge, rebase, ff-only.
 	ArgInvalidStrategy ArgCode = "invalid_strategy"
+	// ArgUnsupportedFile: a file's changes cannot be staged hunk by hunk
+	// (binary, new, deleted, renamed), or a hunk does not exist.
+	ArgUnsupportedFile ArgCode = "unsupported_file"
 )
 
 var allArgCodes = []ArgCode{
 	ArgNoPaths, ArgInvalidPath, ArgEmptyMessage, ArgInvalidBranch, ArgInvalidRemote, ArgInvalidRev,
-	ArgInvalidStrategy,
+	ArgInvalidStrategy, ArgUnsupportedFile,
 }
 
 var argMessages = map[ArgCode]i18n.Key{
@@ -99,6 +102,7 @@ var argMessages = map[ArgCode]i18n.Key{
 	ArgInvalidRev:    i18n.MsgGitArgInvalidRev,
 
 	ArgInvalidStrategy: i18n.MsgGitArgInvalidStrategy,
+	ArgUnsupportedFile: i18n.MsgGitArgUnsupportedFile,
 }
 
 // ArgError reports an argument refused before git was started. It is not a
