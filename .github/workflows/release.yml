@@ -36,7 +36,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          # ubuntu-latest (26.04) imajında apt aynaları çözülemiyordu (2026-11-11); 24.04'e sabit.
+          - os: ubuntu-24.04
             tags: gui,production,webkit2_41
             asset: gitpal-gui_linux_amd64
           - os: macos-latest
