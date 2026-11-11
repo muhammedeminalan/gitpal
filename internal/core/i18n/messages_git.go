@@ -31,6 +31,7 @@ const (
 	MsgGitKindBranchNotMerged     Key = "git.kind.branch_not_merged"
 	MsgGitKindInvalidName         Key = "git.kind.invalid_name"
 	MsgGitKindPathspecNoMatch     Key = "git.kind.pathspec_no_match"
+	MsgGitKindPathIgnored         Key = "git.kind.path_ignored"
 	MsgGitKindRefNotFound         Key = "git.kind.ref_not_found"
 	MsgGitKindIndexLocked         Key = "git.kind.index_locked"
 
@@ -156,6 +157,12 @@ var gitMessages = map[Key]message{
 	MsgGitKindPathspecNoMatch: {
 		tr: "Verilen yol git'in bildiği hiçbir dosyayla eşleşmiyor. Dosya adını kontrol et.",
 		en: "The given path matches no file git knows. Check the file name.",
+	},
+	MsgGitKindPathIgnored: {
+		tr: "Bu dosya `.gitignore` kuralları yüzünden yok sayılıyor, bu yüzden eklenmedi. " +
+			"Eklemek istiyorsan önce `.gitignore` içindeki kuralı kaldır.",
+		en: "This file is excluded by a `.gitignore` rule, so it was not added. " +
+			"Remove the rule from `.gitignore` first if you want to add it.",
 	},
 	MsgGitKindRefNotFound: {
 		tr: "Böyle bir branch, tag ya da commit bulunamadı. Adı kontrol et; uzak branch'ler için önce fetch yap.",

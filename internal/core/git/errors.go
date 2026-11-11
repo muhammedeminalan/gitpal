@@ -72,6 +72,8 @@ const (
 	KindInvalidName ErrorKind = "invalid_name"
 	// KindPathspecNoMatch: a given path matches no file git knows.
 	KindPathspecNoMatch ErrorKind = "pathspec_no_match"
+	// KindPathIgnored: a path to stage is excluded by an ignore rule.
+	KindPathIgnored ErrorKind = "path_ignored"
 	// KindRefNotFound: a branch, tag, commit or remote ref does not exist.
 	KindRefNotFound ErrorKind = "ref_not_found"
 	// KindIndexLocked: another git process holds the index lock.
@@ -85,8 +87,8 @@ var allKinds = []ErrorKind{
 	KindNothingToCommit, KindIdentityMissing, KindHookFailed, KindAuthFailed, KindRemoteUnreachable,
 	KindNoRemote, KindRejected, KindStaleLease, KindRemoteDeclined, KindNoUpstream, KindDiverged,
 	KindDirtyWorktree, KindConflict, KindOperationInProgress, KindDetachedHead, KindUnbornBranch,
-	KindBranchExists, KindBranchNotMerged, KindInvalidName, KindPathspecNoMatch, KindRefNotFound,
-	KindIndexLocked,
+	KindBranchExists, KindBranchNotMerged, KindInvalidName, KindPathspecNoMatch, KindPathIgnored,
+	KindRefNotFound, KindIndexLocked,
 }
 
 // maxErrorText bounds how much of git's output Error.Error prints. The full
@@ -203,14 +205,15 @@ var stderrKinds = []struct {
 		"fix conflicts and then commit", "unmerged paths",
 	}},
 	{KindDetachedHead, []string{"you are not currently on a branch"}},
-	{KindUnbornBranch, []string{"does not have any commits yet"}},
+	{KindUnbornBranch, []string{"does not have any commits yet", "you have nothing to amend"}},
 	{KindBranchExists, []string{"a branch named"}},
 	{KindBranchNotMerged, []string{"is not fully merged"}},
 	{KindInvalidName, []string{"is not a valid branch name", "is not a valid ref name"}},
 	{KindPathspecNoMatch, []string{"did not match any file"}},
+	{KindPathIgnored, []string{"ignored by one of your .gitignore files"}},
 	{KindRefNotFound, []string{
 		"invalid reference", "not a valid object name", "unknown revision", "bad revision",
-		"couldn't find remote ref", "' not found",
+		"couldn't find remote ref", "' not found", "malformed object name",
 	}},
 }
 

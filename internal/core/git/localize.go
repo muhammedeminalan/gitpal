@@ -35,6 +35,7 @@ var kindMessages = map[ErrorKind]i18n.Key{
 	KindBranchNotMerged:     i18n.MsgGitKindBranchNotMerged,
 	KindInvalidName:         i18n.MsgGitKindInvalidName,
 	KindPathspecNoMatch:     i18n.MsgGitKindPathspecNoMatch,
+	KindPathIgnored:         i18n.MsgGitKindPathIgnored,
 	KindRefNotFound:         i18n.MsgGitKindRefNotFound,
 	KindIndexLocked:         i18n.MsgGitKindIndexLocked,
 }
