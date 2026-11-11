@@ -122,15 +122,16 @@ func (f *dashFixture) settle(cmd tea.Cmd) {
 	}
 }
 
-// run executes a command, giving up on one that only waits for a timer (the
-// cursor blink): the work the dashboard does answers at once.
+// run executes a command. The dashboard's own work (git, the guard) can take
+// seconds on a slow CI machine and must be waited for; the only other
+// commands are cursor-blink timers, which settle drops once they fire.
 func run(cmd tea.Cmd) tea.Msg {
 	done := make(chan tea.Msg, 1)
 	go func() { done <- cmd() }()
 	select {
 	case msg := <-done:
 		return msg
-	case <-time.After(300 * time.Millisecond):
+	case <-time.After(30 * time.Second):
 		return nil
 	}
 }
