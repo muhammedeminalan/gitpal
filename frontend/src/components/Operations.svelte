@@ -37,7 +37,8 @@
         <button class="btn-primary" onclick={() => (confirming = true)}>{t('ops.undo')}</button>
       {/if}
     {:else}
-      <p class="text-zinc-500">{t('ops.undo_none')}{undo?.reason ? `: ${undo.reason}` : ''}</p>
+      <!-- Neden varsa yalnızca onu göster; genel metin aynı şeyi bir daha söylüyordu. -->
+      <p class="text-zinc-500">{undo?.reason || t('ops.undo_none')}</p>
     {/if}
   </section>
 
