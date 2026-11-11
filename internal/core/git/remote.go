@@ -552,3 +552,20 @@ func (r *Runner) AheadBehind(ctx context.Context, dir, local, upstream string) (
 	}
 	return ahead, behind, nil
 }
+
+// FetchRef fetches one ref from a remote into a local branch, e.g. a pull
+// request's head ("pull/7/head") into "pr-7". The local branch must not be
+// checked out; an existing one is only moved forward.
+func (r *Runner) FetchRef(ctx context.Context, dir, remote, src, branch string) error {
+	if err := r.remoteRequire(ctx, dir, remote); err != nil {
+		return err
+	}
+	if err := checkName(src, ArgInvalidRev); err != nil {
+		return err
+	}
+	if err := checkName(branch, ArgInvalidBranch); err != nil {
+		return err
+	}
+	_, err := r.Run(ctx, networkCmd(dir, "fetch", "--quiet", "--no-tags", endOfOptions, remote, src+":"+branchHeads+branch))
+	return err
+}

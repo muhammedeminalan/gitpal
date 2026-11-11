@@ -97,3 +97,25 @@ func TestClone(t *testing.T) {
 		assert.ErrorAs(t, origin.Runner.Clone(ctx, origin.Dir, dest, git.CloneOptions{Branch: "--x"}), &argErr)
 	})
 }
+
+func TestFetchRefAndDiffSince(t *testing.T) {
+	ctx := context.Background()
+	origin, first, second := remoteSetup(t)
+	first.Git("switch", "--quiet", "-c", "feature")
+	first.WriteFile("f.txt", "feature\n")
+	first.Commit("feature work")
+	first.Git("push", "--quiet", "origin", "feature:refs/pull/7/head")
+	_ = origin
+
+	require.NoError(t, second.Runner.FetchRef(ctx, second.Dir, "origin", "refs/pull/7/head", "pr-7"))
+	assert.Equal(t, first.Git("rev-parse", "HEAD"), second.Git("rev-parse", "pr-7"))
+	assert.Equal(t, git.KindNoRemote, git.KindOf(second.Runner.FetchRef(ctx, second.Dir, "nope", "x", "y")))
+	assert.Equal(t, git.ArgInvalidBranch, stageArgCode(t, second.Runner.FetchRef(ctx, second.Dir, "origin", "x", "--force")))
+
+	files, err := first.Runner.Diff(ctx, first.Dir, git.DiffOptions{Since: "main"})
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	assert.Equal(t, "f.txt", files[0].Path)
+	_, err = first.Runner.Diff(ctx, first.Dir, git.DiffOptions{Since: "--output=x"})
+	assert.Equal(t, git.ArgInvalidRev, stageArgCode(t, err))
+}

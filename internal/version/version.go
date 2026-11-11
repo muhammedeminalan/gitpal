@@ -8,6 +8,10 @@ var (
 	Version = "dev"
 	Commit  = ""
 	Date    = ""
+	// GitHubClientID is the OAuth app gitpal signs in to GitHub with
+	// (device flow). A release build sets it; without it `gitpal auth
+	// github` offers the gh CLI or a personal access token instead.
+	GitHubClientID = ""
 )
 
 // String returns the version for display, e.g.

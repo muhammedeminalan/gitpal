@@ -292,3 +292,8 @@ func firstLine(s string) string {
 	line, _, _ := strings.Cut(strings.TrimSpace(s), "\n")
 	return line
 }
+
+// ErrNeedsYes stops a confirmable action that nobody can confirm.
+var ErrNeedsYes = safety.ErrConfirmationRequired
+
+func safetySwitch(branch string) safety.Operation { return safety.Switch(branch) }

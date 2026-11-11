@@ -12,4 +12,5 @@ var catalog = mergeCatalogs(
 	cliMessages,
 	aiMessages,
 	advancedMessages,
+	githubMessages,
 )

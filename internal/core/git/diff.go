@@ -16,6 +16,10 @@ type DiffOptions struct {
 	// Commit, when set, shows what that commit changed relative to its first
 	// parent, or to nothing for a root commit. Staged is then ignored.
 	Commit string
+	// Since, when set, shows what HEAD changed since it forked from this
+	// revision (`git diff since...HEAD`): what a pull request into it would
+	// bring. Staged and Commit are ignored.
+	Since string
 	// Paths limits the diff to these files or directories.
 	Paths []string
 	// Context is the number of unchanged lines shown around a change. Zero
@@ -149,6 +153,11 @@ func (r *Runner) diffRun(ctx context.Context, dir string, opts DiffOptions, form
 	args = append(args, format...)
 
 	switch {
+	case opts.Since != "":
+		if err := checkName(opts.Since, ArgInvalidRev); err != nil {
+			return Result{}, err
+		}
+		args = append(args, endOfOptions, opts.Since+"...HEAD")
 	case opts.Commit != "":
 		from, to, err := r.diffCommitRange(ctx, dir, opts.Commit)
 		if err != nil {

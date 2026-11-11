@@ -505,6 +505,34 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
 - Düzeltme (testle bulundu): diff ayrıştırıcısı adında hem boşluk hem tırnak olan dosyada `---` satırının sonundaki sekmeyi
   kırpmıyordu.
 
+### A-035 — GitHub (M6, 2026-11-11)
+- `internal/core/github`, `google/go-github/v90` üzerinde (spec 2). Kendi sade tiplerini döner; go-github tipleri dışarı sızmaz.
+- Hatalar türe çevrilir (token yok, yetki, rate limit + ne zaman açılacağı, bulunamadı, geçersiz istek + GitHub'ın doğrulama
+  mesajı, ağ, sunucu, birleştirilemez). Yanıt gövdesi ve token hiçbir zaman hata metnine girmez. go-github rate limit'e
+  takılınca, sınır açılana kadar istekleri kendisi yerelde reddeder (testle görüldü).
+- Token sırası: keychain → (`github.auth: gh-cli` ise ya da keychain boşsa) `gh auth token` → `GITHUB_TOKEN` (CI için).
+- Giriş: `gitpal auth github` = OAuth device flow (RFC 8628, `slow_down`'da aralık +5 sn); `--token` (ekranda görünmeden,
+  boru ile de); `--gh` (gh CLI'ın girişi; token gitpal'a kopyalanmaz, yalnızca `github.auth: gh-cli` yazılır). Token önce
+  `GET /user` ile doğrulanır, GitHub reddederse saklanmaz. **Bilinen sınır:** device flow bir OAuth uygulaması ister; client ID
+  derleme anında `version.GitHubClientID` (ldflags) ya da `GITPAL_GITHUB_CLIENT_ID` ile verilir. Bu depoda kayıtlı bir OAuth
+  uygulaması yok — kullanıcının açması gerekiyor (M8 / sürüm notu). O zamana kadar `--gh` ya da `--token`.
+- `gh auth token` çağrısı, git dışında süreç başlatan ikinci yerdir (ilki kullanıcının editörü): sabit argümanlar, 10 sn zaman
+  aşımı, gh yoksa ya da giriş yapılmamışsa sessizce "token yok".
+- Repo kimliği: `--gh-repo sahip/ad`, yoksa repodaki GitHub remote'u (önce `origin`). GitHub Enterprise / testler için
+  `GITPAL_GITHUB_API_URL`, `GITPAL_GITHUB_WEB_URL`, `GITPAL_GITHUB_HOST`.
+- Komutlar: `repo create|list|clone`, `pr create|list|view|merge|close|checkout|comment`, `issue list|create|close|label`,
+  `release create`, `actions`.
+  - `repo create` repodaysa `origin`'i bağlar (zaten varsa dokunmaz), `--push` ile ilk push'u güvenlik katmanından yapar.
+    README / lisans / .gitignore yalnızca istenirse (var olan repo push edilecekse GitHub ilk commit'i oluşturmamalı).
+  - `pr create` önce branch'i push eder (upstream yoksa ayarlar); başlık sırası: `--title` → AI (`--ai` ya da AI kuruluysa;
+    commit listesi + `base...HEAD` diff'i, aynı temizlikle) → tek commit varsa onun konusu/gövdesi → kullanıcıya sorulur.
+  - `pr merge` GitHub'daki paylaşılan repoyu değiştirir: "dikkat" sınıfı gibi tek onay (`--yes` geçer; terminal yoksa çıkış 3).
+  - `pr checkout` = `refs/pull/N/head` → `pr-N`, ardından güvenlik katmanından switch.
+- Branch koruması ön uyarısı (spec 5): push'tan önce, token varsa ve remote GitHub'daysa, 5 sn sınırla `GET branches/<b>`;
+  korumalıysa uyarı basar, hiçbir zaman engellemez, hata olursa sessiz kalır.
+- `Fixes #N` önerisi: branch adında issue numarası (`fix/123-x`, `gh-42`, `issue_7`) varsa ve mesaj anmıyorsa ipucu basılır.
+- Testler sahte GitHub sunucusuyla (httptest); gerçek ağa çağrı yok.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
@@ -586,11 +614,19 @@ workspace (A-034). Doğrulama: lint 0, race testleri, kapsam %91,2, 5 platform d
 **Doğrulanmayan:** interaktif rebase'in Windows'ta çalışması (editör komutu Git for Windows'un `sh`'ıyla çalışır varsayımı) —
 `main`'e alınınca CI gösterecek. Satır bazında stage (spec "V1.1, zaman kalırsa") yapılmadı.
 
+### M6 — GitHub ✅ (2026-11-11)
+Giriş (device flow / token / gh CLI), repo, PR, issue, release, Actions durumu, branch koruması uyarısı, `Fixes #N` ipucu
+(A-035). Doğrulama: lint 0, race testleri, kapsam %90,1, 5 platform derleme.
+**CI notu:** M3–M5 push'larında `main` macOS ve Windows'ta kırmızıydı (TUI test düzeneğinde 300 ms zaman aşımı, ürün kodu
+değil). `8e4a368` ile düzeltildi, CI yeşil; o arada fark edilmemesi süreç hatası — artık her `main` push'undan sonra CI
+sonucu kontrol ediliyor.
+**Doğrulanmayan:** gerçek GitHub'a hiç istek atılmadı (bu ortamda kullanıcı token'ı yok); device flow kayıtlı bir OAuth
+uygulaması olmadan çalışmaz.
+
 **Tahmini kalan süre** (tahmin, ölçüm değil):
 
 | Milestone | Süre |
 |---|---|
-| M6 GitHub | ~3 saat |
 | M7 GUI | 6–8 saat (en belirsiz) |
 | M8 Cila ve dağıtım | 2–3 saat |
 

@@ -250,7 +250,7 @@ func (a *app) newAuthCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.AddCommand(aiCmd, logout)
+	cmd.AddCommand(aiCmd, a.newAuthGitHubCmd(), logout)
 	return cmd
 }
 

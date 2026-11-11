@@ -63,6 +63,9 @@ func (a *app) commit(ctx context.Context, f commitFlags) (safety.Result, error) 
 	if err != nil {
 		return safety.Result{}, err
 	}
+	if msg != "" {
+		a.fixesHint(ctx, msg)
+	}
 	res, err := a.runOp(ctx, safety.Commit(git.CommitOptions{Message: msg, Amend: f.amend, AllowEmpty: f.allowEmpty}))
 	if err != nil {
 		return res, err

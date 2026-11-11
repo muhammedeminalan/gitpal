@@ -23,6 +23,13 @@ func (a *app) push(ctx context.Context, opts git.PushOptions) (git.PushResult, e
 			opts.SetUpstream = true
 		}
 	}
+	if opts.Branch == "" && !opts.ForceWithLease {
+		if runner, root, err := a.git(); err == nil {
+			if branch, err := runner.CurrentBranch(ctx, root); err == nil && branch != "" {
+				a.warnIfProtected(ctx, branch)
+			}
+		}
+	}
 	res, err := a.runOp(ctx, safety.Push(opts))
 	if err != nil {
 		return res.Push, err
