@@ -77,6 +77,8 @@ type Env struct {
 	RebaseEditor func(ctx context.Context, opts tui.RebaseOptions) ([]git.RebaseStep, error)
 	// Editor opens a file in the user's editor.
 	Editor func(ctx context.Context, path string) error
+	// LaunchGUI starts the desktop app on a repository root ("" for none).
+	LaunchGUI func(dir string) error
 	// NewAI builds the AI provider.
 	NewAI func(s ai.Settings) (ai.Provider, error)
 	// ReadSecret reads a key without showing it; nil reads a plain line.
@@ -105,6 +107,7 @@ func SystemEnv() Env {
 		RebaseEditor: tui.EditRebase,
 		Editor:       openEditor,
 		NewAI:        ai.New,
+		LaunchGUI:    launchGUI,
 		ReadSecret: func() (string, error) {
 			fd := int(os.Stdin.Fd()) //nolint:gosec // a file descriptor always fits in an int
 			if !term.IsTerminal(fd) {

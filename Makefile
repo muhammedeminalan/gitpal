@@ -26,6 +26,19 @@ help: ## Hedefleri listele
 build: ## bin/gitpal üret
 	$(GO) build -trimpath -ldflags '$(LDFLAGS)' -o bin/gitpal ./cmd/gitpal
 
+# Masaüstü arayüzü (spec §9): Wails + cgo. Linux'ta webkit2gtk-4.1 ve gtk3
+# geliştirme paketleri gerekir; macOS ve Windows'ta sistemin web görünümü kullanılır.
+GUI_TAGS ?= gui,production$(if $(filter Linux,$(shell uname -s 2>/dev/null)),$(comma)webkit2_41)
+comma := ,
+
+.PHONY: frontend
+frontend: ## Arayüzün web kısmını derle (frontend/dist)
+	cd frontend && npm ci && npm run check && npm run build
+
+.PHONY: gui
+gui: frontend ## bin/gitpal-gui üret (masaüstü arayüzü)
+	CGO_ENABLED=1 $(GO) build -trimpath -tags '$(GUI_TAGS)' -ldflags '$(LDFLAGS)' -o bin/gitpal-gui ./cmd/gitpal-gui
+
 .PHONY: install
 install: ## gitpal'ı GOPATH/bin altına kur
 	$(GO) install -trimpath -ldflags '$(LDFLAGS)' ./cmd/gitpal
@@ -74,4 +87,4 @@ check: lint test-race cover cross ## Commit öncesi tam kontrol
 
 .PHONY: clean
 clean: ## Derleme çıktılarını sil
-	rm -rf bin dist coverage.out
+	rm -rf bin dist coverage.out frontend/dist

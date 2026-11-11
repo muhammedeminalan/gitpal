@@ -1,4 +1,4 @@
-package cli
+package graph
 
 import (
 	"testing"
@@ -11,12 +11,12 @@ import (
 func c(hash string, parents ...string) git.Commit { return git.Commit{Hash: hash, Parents: parents} }
 
 func TestGraphLinear(t *testing.T) {
-	assert.Equal(t, []string{"*", "*", "*"}, graphRows([]git.Commit{c("c", "b"), c("b", "a"), c("a")}))
+	assert.Equal(t, []string{"*", "*", "*"}, Rows([]git.Commit{c("c", "b"), c("b", "a"), c("a")}))
 }
 
 func TestGraphMerge(t *testing.T) {
 	// m merges s (side) into x; both come from a.
-	rows := graphRows([]git.Commit{
+	rows := Rows([]git.Commit{
 		c("m", "x", "s"),
 		c("s", "a"),
 		c("x", "a"),
@@ -32,10 +32,10 @@ func TestGraphMerge(t *testing.T) {
 
 func TestGraphTwoBranchTips(t *testing.T) {
 	// With --all, two tips that share a base.
-	rows := graphRows([]git.Commit{c("f", "a"), c("m", "a"), c("a")})
+	rows := Rows([]git.Commit{c("f", "a"), c("m", "a"), c("a")})
 	assert.Equal(t, []string{"*", "| *", "* /"}, rows)
 }
 
 func TestGraphEmpty(t *testing.T) {
-	assert.Empty(t, graphRows(nil))
+	assert.Empty(t, Rows(nil))
 }

@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+html, body { height: 100%; }
+body { @apply bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100 text-sm; font-family: ui-sans-serif, system-ui, sans-serif; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.btn { @apply px-3 py-1.5 rounded-md border border-zinc-300 dark:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50; }
+.btn-primary { @apply px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50; }
+.input { @apply w-full px-2 py-1.5 rounded-md border border-zinc-300 dark:border-zinc-600 bg-transparent; }
+.panel-title { @apply text-xs font-semibold uppercase tracking-wide text-zinc-500 px-3 py-2; }

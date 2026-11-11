@@ -13,4 +13,5 @@ var catalog = mergeCatalogs(
 	aiMessages,
 	advancedMessages,
 	githubMessages,
+	guiMessages,
 )

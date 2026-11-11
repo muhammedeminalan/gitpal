@@ -439,3 +439,24 @@ func TestDashboardOpensForAPerson(t *testing.T) {
 	require.Equal(t, cli.ExitOK, h.run())
 	assert.True(t, opened)
 }
+
+func TestGUIOpensTheWindowOnTheRepository(t *testing.T) {
+	h := newHarness(t)
+	h.writeConfig("language: en\n")
+	repo := gittest.NewRepo(t)
+	h.cwd = repo.Dir
+
+	var opened string
+	h.env.LaunchGUI = func(dir string) error { opened = dir; return nil }
+	require.Equal(t, cli.ExitOK, h.run("gui"), h.stderr.String())
+	assert.Equal(t, repo.Dir, opened)
+
+	// Outside a repository the window opens on its welcome screen.
+	h.cwd = gittest.TempDir(t)
+	require.Equal(t, cli.ExitOK, h.run("gui"), h.stderr.String())
+	assert.Empty(t, opened)
+
+	h.env.LaunchGUI = func(string) error { return cli.ErrNoGUI }
+	assert.Equal(t, cli.ExitError, h.run("gui"))
+	assert.Contains(t, h.stderr.String(), "gitpal-gui")
+}

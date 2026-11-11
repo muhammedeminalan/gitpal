@@ -48,6 +48,7 @@ func (a *app) newRootCmd() *cobra.Command {
 		a.newStashCmd(), a.newTagCmd(), a.newReflogCmd(), a.newRecoverCmd(), a.newBlameCmd(),
 		a.newRemoteCmd(), a.newSubmoduleCmd(), a.newIdentityCmd(), a.newWorkspaceCmd(),
 		a.newRepoCmd(), a.newPRCmd(), a.newIssueCmd(), a.newReleaseCmd(), a.newActionsCmd(),
+		a.newGUICmd(),
 	)
 	// Without a subcommand: the interactive screen for a person, help for a
 	// script.

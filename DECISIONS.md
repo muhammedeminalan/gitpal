@@ -533,6 +533,29 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
 - `Fixes #N` önerisi: branch adında issue numarası (`fix/123-x`, `gh-42`, `issue_7`) varsa ve mesaj anmıyorsa ipucu basılır.
 - Testler sahte GitHub sunucusuyla (httptest); gerçek ağa çağrı yok.
 
+### A-036 — Masaüstü arayüzü (M7, 2026-11-11)
+- Wails v2.17.1 + Svelte 5 + TypeScript + Tailwind 4 (spec 9). Go tarafı `internal/gui` paketinde, Wails'e bağımlı değil:
+  `gui.App` saf Go, testleri gerçek git repolarıyla (gittest) koşuyor. Wails yalnızca `cmd/gitpal-gui` ve `frontend/assets.go`
+  içinde, ikisi de `gui` build etiketinin arkasında. Neden: CI, `make cross` ve `go test ./...` cgo / WebKit olmadan
+  (`CGO_ENABLED=0`) yeşil kalsın; etiketsiz derlemede `cmd/gitpal-gui` "make gui ile derle" diyen bir yedek main'dir.
+- Derleme: `make gui` (`npm ci` + `svelte-check` + `vite build`, ardından `go build -tags gui,production[,webkit2_41]`).
+  Linux'ta webkit2gtk-4.1 kullanılır (Ubuntu 24.04+ 4.0'ı taşımıyor). CI'da ayrı `gui` işi üç işletim sisteminde derliyor.
+- Wails'in ürettiği `wailsjs` bağlamaları yerine `frontend/src/lib/api.ts` elle yazıldı (`window.go.gui.App.<Metot>`):
+  `wails` CLI'sı derleme için gerekmesin. Bedeli: Go'da bir metot imzası değişirse TS tarafını elle güncellemek gerekiyor.
+- Güvenlik katmanı arayüzde atlanamaz: arayüz yalnızca `Assess` (kuru çalıştırma) ve `Do(istek, cevap)` çağırır; `Do`
+  her seferinde `Guard.Do`'dan geçer, onay ve "branch adını yaz" kontrolü Go tarafında yapılır (test: arayüz onay vermeden
+  tehlikeli işlem çalıştıramıyor; korumalı branch'e force push engelli). `continue` / `skip` `Guard.Continue` / `Skip` ile.
+- Tüm metinler `i18n.GUITexts` ile Go kataloğundan gelir (TR + EN); hatalar Go tarafında yerelleştirilir.
+- "Komutu göster": `git.Runner` gözlemcisi son 50 komutu tutar; onay penceresi ve İşlemler sekmesi gösterir.
+- `gitpal gui`: yanındaki ya da PATH'teki `gitpal-gui`'yi repo köküyle başlatır, beklemez.
+- **Spec'ten sapmalar (bilerek, sonraya):**
+  - Dosya izleme `fsnotify` yerine pencere öndeyken 3 sn'de bir `State` sorgusu. Büyük repoda maliyetli olabilir.
+  - Sanallaştırılmış liste yok; log 300 commit ile sınırlı.
+  - Uzun işlemler için ilerleme çubuğu ve iptal yok (işlem bitene kadar düğmeler kilitli).
+  - 3 yönlü çakışma görünümü yok: çakışan dosyalar listelenir, "bizimki / onlarınki / çözüldü" + Devam / Atla / İptal var.
+  - Arayüzde interaktif rebase düzenleyici ve GitHub ekranı (PR / issue) yok; ikisi de CLI / TUI'de var.
+  - SSH parola / host anahtarı istemi yok (A-020): git'in kendi askpass'ı devrede.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
@@ -543,7 +566,8 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
 | `history.jsonl` boyut sınırı / rotasyonu | M8 |
 | `make cover` bulut konteynerinde düşüyor (`go: no such tool "covdata"`) | Ortam sorunu, `main`'de de aynı; kapsam elle ölçüldü. Mac ve CI'da beklenmiyor |
 | `.goreleaser.yaml`, `gp` kısa adı | M8 |
-| GUI'de SSH parola / host anahtarı istemi | M7 (A-020) |
+| GUI'de SSH parola / host anahtarı istemi | V1.1 (A-020, A-036) |
+| GUI: fsnotify, sanal liste, ilerleme/iptal, 3 yönlü çakışma, rebase düzenleyici, GitHub ekranı | V1.1 (A-036) |
 
 ## Milestone durumu
 
@@ -623,11 +647,22 @@ sonucu kontrol ediliyor.
 **Doğrulanmayan:** gerçek GitHub'a hiç istek atılmadı (bu ortamda kullanıcı token'ı yok); device flow kayıtlı bir OAuth
 uygulaması olmadan çalışmaz.
 
+### M7 — Masaüstü arayüzü ✅ (2026-11-11, kapsamı daraltılmış — bkz. A-036)
+Karşılama (son repolar, klasör seçici, init, clone), 3 panel (branch / remote / stash / tag; staged-unstaged dosyalar ve
+hunk stage; diff), commit kutusu (AI + onay, Commit / Commit & Push, amend), çakışma çözümü, geçmiş (graph, arama, commit
+detayı, revert / cherry-pick / reset), güvenlik onay penceresi (risk rengi, etkiler, bulgular, yedek, "komutu göster"),
+işlem geçmişi + undo + yedekler, ayarlar (kimlik, AI anahtarı, tüm ayarlar), açık/koyu/sistem tema, Ctrl/Cmd+K palet,
+Ctrl/Cmd+Enter commit, `s` stage. Doğrulama: lint 0 (gui etiketiyle de), race testleri, `internal/core` kapsamı %90,
+5 platform derleme, `svelte-check` 0 hata, Linux'ta `gitpal-gui` derlendi ve Xvfb altında açılıp ekran görüntüsü alındı
+(karşılama ve ana ekran gerçek repo verisiyle doğru).
+**Doğrulanmayan:** macOS ve Windows'ta pencere hiç açılmadı (yalnızca CI derlemesi); tıklama akışları gerçek pencerede
+elle denenmedi — Go tarafı testlerle, arayüz tip kontrolüyle sınandı.
+Ayrıca `8bba2d9`: milisaniyesi 000 olmayan yedeklerin listelenmemesi düzeltildi (GUI testleri gerçek saatle buldu).
+
 **Tahmini kalan süre** (tahmin, ölçüm değil):
 
 | Milestone | Süre |
 |---|---|
-| M7 GUI | 6–8 saat (en belirsiz) |
 | M8 Cila ve dağıtım | 2–3 saat |
 
 `gitpal save` (add → AI commit → push) M4 sonunda çalışır.

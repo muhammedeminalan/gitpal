@@ -1,4 +1,5 @@
-package cli
+// Package graph draws a commit history as text lanes, for the CLI and the GUI.
+package graph
 
 import (
 	"slices"
@@ -7,11 +8,11 @@ import (
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
 )
 
-// graphRows draws the history as lanes, one row per commit, newest first:
+// Rows draws the history as lanes, one row per commit, newest first:
 // "*" marks the commit, "|" a line of history passing by. It is the plain
 // cousin of `git log --graph`: lanes appear and disappear without diagonal
 // connectors, which keeps every row exactly as wide as the lanes it has.
-func graphRows(commits []git.Commit) []string {
+func Rows(commits []git.Commit) []string {
 	var lanes []string // the commit each lane is waiting for
 	rows := make([]string, 0, len(commits))
 	for _, c := range commits {

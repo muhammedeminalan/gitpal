@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
+	lanes "github.com/muhammedeminalan/gitpal/internal/core/graph"
 	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
 )
 
@@ -60,7 +61,7 @@ func (a *app) printLog(commits []git.Commit, graph bool) {
 	}
 	var rows []string
 	if graph {
-		rows = graphRows(commits)
+		rows = lanes.Rows(commits)
 	}
 	for i, c := range commits {
 		prefix := ""
