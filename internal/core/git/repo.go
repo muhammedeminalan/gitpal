@@ -32,3 +32,25 @@ func (r *Runner) Head(ctx context.Context, dir string) (hash string, ok bool, er
 	}
 	return strings.TrimSpace(string(res.Stdout)), true, nil
 }
+
+// resolveCommit returns the full hash of the commit a user-supplied revision
+// names. The revision is refused when it could be read as an option; one that
+// names no commit is reported with kind KindRefNotFound.
+func (r *Runner) resolveCommit(ctx context.Context, dir, rev string) (string, error) {
+	if err := checkName(rev, ArgInvalidRev); err != nil {
+		return "", err
+	}
+	res, err := r.Run(ctx, Cmd{Dir: dir, Args: []string{
+		"rev-parse", "--verify", "--quiet", endOfOptions, rev + "^{commit}",
+	}})
+	if err != nil {
+		// With --quiet, a revision that does not resolve is exit status 1 and
+		// no message.
+		var gerr *Error
+		if code, exited := ExitCode(err); exited && code == 1 && errorsAs(err, &gerr) && gerr.Kind == KindUnknown {
+			gerr.Kind = KindRefNotFound
+		}
+		return "", err
+	}
+	return strings.TrimSpace(string(res.Stdout)), nil
+}
