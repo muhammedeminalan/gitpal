@@ -37,11 +37,25 @@ make build        # bin/gitpal
 make install      # GOPATH/bin altına
 ```
 
-**Masaüstü arayüzü** ayrı bir programdır (`gitpal-gui`). Sürüm sayfasından indirip `gitpal` ile aynı klasöre koy,
-ya da kaynaktan derle (Node 22+ ve cgo gerekir; Linux'ta `libgtk-3-dev` ve `libwebkit2gtk-4.1-dev`):
+**Masaüstü arayüzü** ayrı bir programdır. [Sürüm sayfasından](https://github.com/muhammedeminalan/gitpal/releases)
+indir; bilgisayarda `git` kurulu olmalı:
+
+| Sistem | Dosya | Kurulum |
+|---|---|---|
+| macOS (Apple Silicon) | `gitpal_<sürüm>_macos_arm64.dmg` | Aç, `gitpal`'ı Applications'a sürükle |
+| Windows (64 bit) | `gitpal-gui_windows_amd64.exe` | Çift tıkla (kurulum yok). WebView2 gerekir; Windows 11'de hazır gelir |
+| Linux (64 bit) | `gitpal-gui_linux_amd64` | `chmod +x` ve çalıştır (`libgtk-3`, `libwebkit2gtk-4.1` gerekir) |
+
+Dosyalar **imzalı değil** (Apple / Microsoft geliştirici imzası yok), bu yüzden ilk açılışta sistem uyarır:
+macOS'ta Sistem Ayarları → Gizlilik ve Güvenlik → "Yine de Aç"; Windows'ta SmartScreen penceresinde
+"Ek bilgi" → "Yine de çalıştır". Intel Mac için arayüz dosyası yok (terminal sürümü var).
+
+`gitpal gui` komutunun pencereyi açabilmesi için `gitpal-gui` dosyası `gitpal` ile aynı klasörde ya da PATH'te
+olmalı. Kaynaktan derlemek için (Node 22+ ve cgo gerekir; Linux'ta `libgtk-3-dev` ve `libwebkit2gtk-4.1-dev`):
 
 ```bash
 make gui          # bin/gitpal-gui
+make dmg          # macOS: dist/gitpal_<sürüm>_macos_<mimari>.dmg (içinde gitpal.app)
 gitpal gui        # bulunduğun repoda pencereyi açar
 ```
 
@@ -171,7 +185,8 @@ girdisi hiçbir zaman bir shell komutuna eklenmez.
 - Masaüstü arayüzünde 3 yönlü çakışma görünümü, interaktif rebase düzenleyici ve GitHub ekranı yok (CLI / TUI'de
   var); dosya izleme yerine pencere öndeyken birkaç saniyede bir yenilenir. Ayrıntı: [DECISIONS.md](DECISIONS.md) A-036.
 - GitHub device flow girişi kayıtlı bir OAuth uygulaması gerektirir; şimdilik token ya da `gh` CLI ile giriş yapılır.
-- Masaüstü arayüzü macOS'ta `.app` paketi olarak değil, tek dosya olarak dağıtılır.
+- Masaüstü arayüzü imzasız dağıtılır (macOS notarization ve Windows kod imzası yok); uygulamanın simgesi yok.
+- Windows `.exe` gerçek bir Windows masaüstünde elle denenmedi (yalnızca CI'da derleniyor ve testleri koşuyor).
 
 ## Geliştirme
 
@@ -186,6 +201,7 @@ Gereksinimler: Go 1.26+, git 2.30+, golangci-lint v2; arayüz için Node 22+.
 | `make cross` | macOS / Linux / Windows için derleme kontrolü |
 | `make check` | Hepsi birden (commit öncesi) |
 | `make gui` | Masaüstü arayüzü |
+| `make dmg` | macOS disk imajı (`gitpal.app` içeren `.dmg`) |
 | `goreleaser release --snapshot --clean` | Sürüm paketlerini yerelde üretir |
 
 Testler gerçek `git` çalıştırır ama yalnızca geçici dizinlerde ve izole bir git ayarıyla; gerçek repolarına ve

@@ -40,6 +40,12 @@ GUI_LDFLAGS ?= $(if $(filter Darwin,$(shell uname -s 2>/dev/null)),-framework Un
 # verilince varsayılan düştüğü için açıkça yazılır. Diğer platformlarda boş kalır ve Go
 # kendi varsayılanını kullanır.
 GUI_CFLAGS ?= $(if $(filter Darwin,$(shell uname -s 2>/dev/null)),-O2 -g -Wno-deprecated-declarations)
+# Windows: pencereli program olarak bağlanır; yoksa .exe çift tıklanınca arayüzün yanında bir
+# konsol penceresi açılır ve o kapatılınca uygulama da kapanır (DECISIONS A-039).
+GUI_LINKFLAGS ?= $(if $(filter Windows_NT,$(OS)),-H windowsgui)
+# macOS disk imajı: dist/gitpal_<sürüm>_macos_<mimari>.dmg
+DMG_VERSION := $(patsubst v%,%,$(VERSION))
+DMG ?= dist/gitpal_$(DMG_VERSION)_macos_$(shell uname -m 2>/dev/null).dmg
 
 .PHONY: frontend
 frontend: ## Arayüzün web kısmını derle (frontend/dist)
@@ -47,7 +53,11 @@ frontend: ## Arayüzün web kısmını derle (frontend/dist)
 
 .PHONY: gui
 gui: frontend ## bin/gitpal-gui üret (masaüstü arayüzü)
-	CGO_ENABLED=1 CGO_CFLAGS='$(GUI_CFLAGS)' CGO_LDFLAGS='$(GUI_LDFLAGS)' $(GO) build -trimpath -tags '$(GUI_TAGS)' -ldflags '$(LDFLAGS)' -o bin/gitpal-gui ./cmd/gitpal-gui
+	CGO_ENABLED=1 CGO_CFLAGS='$(GUI_CFLAGS)' CGO_LDFLAGS='$(GUI_LDFLAGS)' $(GO) build -trimpath -tags '$(GUI_TAGS)' -ldflags '$(LDFLAGS) $(GUI_LINKFLAGS)' -o bin/gitpal-gui ./cmd/gitpal-gui
+
+.PHONY: dmg
+dmg: gui ## macOS: gitpal.app içeren .dmg üret (dist/)
+	sh scripts/package-macos.sh bin/gitpal-gui '$(DMG_VERSION)' '$(DMG)'
 
 .PHONY: install
 install: ## gitpal'ı GOPATH/bin altına kur

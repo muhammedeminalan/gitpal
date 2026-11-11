@@ -12,5 +12,5 @@
   - Token, API anahtarı ve diff içeriği loga ya da hata mesajına yazılmaz.
   - Yıkıcı ya da riskli her işlem `internal/core/safety` içindeki `Guard.Do` üzerinden çalışır; arayüz kodu `git.Restore`, `git.Reset`, `git.DeleteBranch`, `git.Push` gibi fonksiyonları doğrudan çağırmaz.
 - **Sürüm:** `v*` tag'i → `.github/workflows/release.yml` (goreleaser + GUI). Yerelde `goreleaser release --snapshot --clean`.
-- **GUI:** `make gui` (Node + cgo gerekir). `internal/gui` saf Go, Wails yalnızca `gui` etiketli dosyalarda.
+- **GUI:** `make gui` (Node + cgo gerekir); macOS paketi `make dmg` (`scripts/package-macos.sh`, A-039). `internal/gui` saf Go, Wails yalnızca `gui` etiketli dosyalarda.
 - **Ortam:** `~/go/bin` PATH'te değil; gofumpt/wails için `$(go env GOPATH)/bin/...` kullan.

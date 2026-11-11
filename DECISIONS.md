@@ -592,13 +592,52 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
   macOS loglarında uyarı görünmeye devam eder (zararsız).
 - **Ne zaman kaldırılır:** Wails bu çağrıyı kaldırdığında `GUI_CFLAGS` satırı silinmeli.
 
+### A-039 — İndirilebilir masaüstü paketleri: macOS `.dmg`, Windows `.exe` (2026-11-11)
+Kullanıcı sürüm sayfasında `.exe` ve `.dmg` istedi. O ana kadar sürüm iş akışı macOS için çıplak bir program dosyası
+(`gitpal-gui_darwin_arm64`), Windows için konsol türünde bir `.exe` üretiyordu.
+
+**macOS**
+- `scripts/package-macos.sh <gitpal-gui> <sürüm> <çıktı.dmg>`: `gitpal.app` (Info.plist, kimlik
+  `io.github.muhammedeminalan.gitpal`, en az macOS 12) + ad-hoc `codesign` + `hdiutil` ile sıkıştırılmış `.dmg`
+  (içinde Applications kısayolu). Kolay yolu `make dmg`.
+- `release.yml` macOS işinde `gitpal_<sürüm>_macos_arm64.dmg` olarak sürüme eklenir (çıplak dosya da kalır: `gitpal gui`
+  onu arar). `ci.yml` her push'ta paketi üretip bağlıyor, `.app` ve imzayı doğruluyor.
+- Ad-hoc imza şart: Apple Silicon imzasız kodu çalıştırmaz, imzası Info.plist'i kapsamayan paketi "hasarlı" sayar.
+- **Yerelde doğrulandı (macOS 27.2, arm64):** imaj bağlanıyor, `codesign --verify --deep --strict` geçiyor, uygulama
+  imajın içinden açılıp çalışır kalıyor.
+- **Sınırlar:** Apple geliştirici imzası ve notarization yok → `spctl` "rejected" diyor, indiren kişi ilk açılışta
+  "Yine de Aç" demek zorunda. Simge yok (repoda görsel yok). Yalnızca arm64 (Intel Mac'e arayüz yok). Finder'dan açılan
+  uygulama kısa bir PATH görür: `git` `/usr/bin/git`'te (Xcode komut satırı araçları) olmalı; yalnızca Homebrew'de kurulu
+  git ile **denenmedi**. `hdiutil create` yeni macOS'ta "deprecated" uyarısı veriyor; önerilen `diskutil image` eski
+  macOS'ta olmadığı için `hdiutil` kaldı.
+
+**Windows**
+- `.exe` artık `-H windowsgui` ile bağlanıyor (`release.yml`, `ci.yml`, `Makefile`). Kanıt: PE başlığındaki alt sistem
+  3'tü (konsol), 2 oldu (pencere). Konsol türünde çift tıklanınca arayüzün yanında siyah bir konsol penceresi açılır ve
+  o kapatılınca uygulama da kapanır.
+- Bunun yan etkisi kodda karşılandı: konsolu olmayan bir program konsol programı (git) başlatınca Windows her biri için
+  yeni bir konsol penceresi açar; arayüz 3 saniyede bir durum sorduğu için pencereler sürekli yanıp sönerdi.
+  `internal/core/git/proc_windows.go`: süreç bir konsol penceresine sahip değilse git `HideWindow` + `CREATE_NO_WINDOW`
+  ile başlatılır (alt süreçleri — ssh, kimlik yardımcıları — aynı penceresiz konsolu devralır). Terminalde (CLI) hiçbir şey
+  değişmez: git terminali paylaşmaya devam eder, ssh parolasını orada sorar.
+- Testler yalnızca Windows'ta derlenir ve CI'da koşar (`proc_windows_test.go`): karar fonksiyonu + gerçek git'in bu
+  ayarlarla çalışıp çıktısının okunabildiği. Yerelde yalnızca Windows'a derleme + `go vet` yapılabildi.
+- **Doğrulanmayan:** `.exe` gerçek bir Windows masaüstünde hiç çift tıklanmadı. Konsol penceresinin gerçekten açılmadığı,
+  git komutlarında pencere yanıp sönmediği ve DPI ölçeklemesi elle denenmeli. `gh auth token` çağrısı
+  (`internal/core/github/auth.go`) aynı ayarı almadı; arayüz GitHub özelliklerini kullanmıyor.
+- Kurulum sihirbazı (NSIS / MSI) yok: tek dosya, çift tıkla çalışır.
+
+**v1.0.0 tag'i:** ilk olarak `702c810`'a kondu; sürüm iş akışı sürüm oluşmadan iptal edildi (indirilebilir hiçbir şey
+yayımlanmadı) ve tag bu değişiklikleri içeren commit'e taşındı.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
 |---|---|
 | `completion` alt komutlarının uzun açıklamaları (İngilizce) | V1.1 |
 | Sürüm imzası (cosign / minisign) | V1.1 (A-037) |
-| macOS `.app` paketi ve notarization | V1.1 |
+| macOS notarization ve Windows kod imzası (uygulamalar imzasız, A-039) | V1.1; Apple / Microsoft geliştirici hesabı gerekir |
+| Uygulama simgesi; Intel Mac için arayüz; Windows `.exe`'nin elle denenmesi | V1.1 (A-039) |
 | M2 testlerinin Windows ve macOS'ta koşması | `main`'e alınınca (CI); yerelde yalnızca Linux + 5 platform derleme |
 | `make cover` bulut konteynerinde düşüyor (`go: no such tool "covdata"`) | Ortam sorunu, `main`'de de aynı; kapsam elle ölçüldü. Mac ve CI'da beklenmiyor |
 | GUI'de SSH parola / host anahtarı istemi | V1.1 (A-020, A-036) |

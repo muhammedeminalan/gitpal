@@ -231,6 +231,7 @@ func (r *Runner) run(ctx context.Context, cmd Cmd) (Result, error) {
 		c.Stderr = io.MultiWriter(&stderr, progress)
 	}
 	c.WaitDelay = killGrace
+	configureProcess(c)
 	if cmd.Stdin != nil {
 		c.Stdin = bytes.NewReader(cmd.Stdin)
 	}

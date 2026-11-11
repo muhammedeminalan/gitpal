@@ -75,6 +75,8 @@ jobs:
             ldflags: -framework UniformTypeIdentifiers
           - os: windows-latest
             tags: gui,production
+            # Sürümdeki gibi pencereli program olarak bağlanır (release.yml ile aynı).
+            linkflags: -H windowsgui
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -106,7 +108,21 @@ jobs:
         env:
           CGO_ENABLED: "1"
           CGO_LDFLAGS: ${{ matrix.ldflags }}
-        run: go build -tags '${{ matrix.tags }}' -o gitpal-gui-bin ./cmd/gitpal-gui
+        run: go build -tags '${{ matrix.tags }}' -ldflags '${{ matrix.linkflags }}' -o gitpal-gui-bin ./cmd/gitpal-gui
+      - name: macOS paketi (.dmg) üretilebiliyor mu
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -eu
+          dmg="$RUNNER_TEMP/gitpal_ci.dmg"
+          sh scripts/package-macos.sh gitpal-gui-bin 0.0.0 "$dmg"
+          mnt="$RUNNER_TEMP/gitpal-dmg"
+          mkdir -p "$mnt"
+          hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt" >/dev/null
+          test -x "$mnt/gitpal.app/Contents/MacOS/gitpal-gui"
+          test -L "$mnt/Applications"
+          codesign --verify --deep --strict "$mnt/gitpal.app"
+          hdiutil detach "$mnt" >/dev/null
 
   install:
     # Kurulum betikleri: yerel sunucudaki sahte bir sürümü indirip

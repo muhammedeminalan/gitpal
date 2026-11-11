@@ -46,6 +46,8 @@ jobs:
             asset: gitpal-gui_darwin_arm64
           - os: windows-latest
             tags: gui,production
+            # Pencereli program: yoksa .exe açılınca yanında konsol penceresi de açılır.
+            linkflags: -H windowsgui
             asset: gitpal-gui_windows_amd64.exe
     steps:
       - uses: actions/checkout@v7
@@ -83,6 +85,12 @@ jobs:
           v="${GITHUB_REF_NAME#v}"
           m=github.com/muhammedeminalan/gitpal/internal/version
           go build -trimpath -tags '${{ matrix.tags }}' \
-            -ldflags "-s -w -X $m.Version=$v -X $m.Commit=${GITHUB_SHA::7}" \
+            -ldflags "-s -w ${{ matrix.linkflags }} -X $m.Version=$v -X $m.Commit=${GITHUB_SHA::7}" \
             -o '${{ matrix.asset }}' ./cmd/gitpal-gui
           gh release upload "$GITHUB_REF_NAME" '${{ matrix.asset }}' --clobber
+          # macOS: aynı dosya gitpal.app içinde, .dmg olarak da eklenir.
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            dmg="gitpal_${v}_macos_arm64.dmg"
+            sh scripts/package-macos.sh '${{ matrix.asset }}' "$v" "$dmg"
+            gh release upload "$GITHUB_REF_NAME" "$dmg" --clobber
+          fi
