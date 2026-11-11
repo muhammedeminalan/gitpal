@@ -58,7 +58,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Linux arayüz kütüphaneleri
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+        # Etkileşimsiz ve önerilen paketler olmadan: önceki koşularda bu adım bir soruda
+        # beklerken 12+ dk takılıyordu; takılırsa da 10 dk'da düşsün.
+        timeout-minutes: 10
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo -E apt-get update -q
+          sudo -E apt-get install -y -q --no-install-recommends libgtk-3-dev libwebkit2gtk-4.1-dev
       - name: Frontend
         working-directory: frontend
         run: |
