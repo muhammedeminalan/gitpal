@@ -77,6 +77,9 @@ func TestStage(t *testing.T) {
 	})
 
 	t.Run("a glob-looking name is a file name, not a pattern", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("Windows cannot create files named with * or :")
+		}
 		repo := stageRepo(t)
 		repo.WriteFile("*.txt", "star\n")
 		repo.WriteFile("a.txt", "a\n")

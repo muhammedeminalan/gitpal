@@ -172,9 +172,9 @@ func TestStatusIgnoredFilesOnlyWhenAsked(t *testing.T) {
 }
 
 func TestStatusAwkwardFileNames(t *testing.T) {
-	names := []string{"çalışma dosyası.txt", "-dash.txt", "*.txt", "a b/c d.txt", "quote'single.txt"}
+	names := []string{"çalışma dosyası.txt", "-dash.txt", "a b/c d.txt", "quote'single.txt"}
 	if runtime.GOOS != "windows" {
-		names = append(names, "tab\there.txt", "new\nline.txt", `double"quote.txt`, `back\slash.txt`)
+		names = append(names, "*.txt", "tab\there.txt", "new\nline.txt", `double"quote.txt`, `back\slash.txt`)
 	}
 	repo := gittest.NewRepo(t)
 	for _, name := range names {

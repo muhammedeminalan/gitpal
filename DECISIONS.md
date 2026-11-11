@@ -73,6 +73,11 @@ Kullanıcı repoyu kendi komutuyla açtı ve push etti: <https://github.com/muha
   `git merge --ff-only` + `git push`.
 - Push etmek hâlâ kullanıcının kararıdır (S-007); Claude Code sormadan push etmez.
 
+### S-010 — M1'in kalanı bulut oturumunda, `claude/serene-mccarthy-w86sgq` branch'inde (2026-11-11)
+`m1-git-core` ve `fix/windows-cli-tests` bu branch'e alındı; 6 modül burada sırayla yazıldı (S-008'deki paralel deneme
+tekrarlanmadı), her modül ayrı commit. `main`'e dokunulmadı. CI yalnızca `main`'e push'ta ve pull request'te koştuğu için
+bu branch'te **hiç CI koşmadı**: Windows ve macOS sonuçları pull request açılınca görülecek. PR açmak kullanıcının kararı.
+
 ## Mimari kararlar
 
 ### A-001 — Modül yolu `github.com/muhammedeminalan/gitpal` (2026-11-10, düzeltme 2026-11-11)
@@ -249,13 +254,86 @@ gereken git ayarları ve yazılması gereken testler `docs/M1_PLAN.md` içinde. 
 - **Bilinen sınır:** SSH, parola/host anahtarı sorusunu doğrudan `/dev/tty`'ye sorabilir (`GIT_TERMINAL_PROMPT=0` bunu kapsamaz).
   CLI'da bu istenen davranış; GUI'de (M7) ele alınmalı.
 
+### A-021 — status (2026-11-11)
+- `GIT_OPTIONAL_LOCKS=0`: arka planda yenilenen status, kullanıcının çalıştırdığı komutun elinden index kilidini almaz.
+- Tanınmayan `# …` başlıkları atlanır (ör. `status.showStash` → `# stash N`); tanınmayan kayıt türü hatadır.
+- `branch.upstream` var ama `branch.ab` yoksa upstream silinmiştir (`UpstreamGone`); bunun doğru çalışması için `--ahead-behind`
+  her zaman verilir (`status.aheadBehind=false` aynı görüntüyü üretirdi).
+- Yarım kalan işlem tek `rev-parse --git-path …` çağrısıyla bulunur. Sıra: rebase / am, merge, cherry-pick, revert, bisect —
+  çakışmada duran rebase arkasında cherry-pick durumu da bırakabildiği için rebase önce gelir.
+
+### A-022 — stage ve commit (2026-11-11)
+- `Unstage`: commit varsa `restore --staged`, yoksa `rm --cached --force -r` (`--force` şart: stage'den sonra yeniden düzenlenen
+  dosyada git düz `rm --cached`'i reddeder; `--cached` ile çalışma alanına dokunulmaz).
+- `UnstageAll`: `reset --quiet -- .`. Yolsuz `git reset` devam eden merge'ü de iptal ederdi.
+- `.gitignore`'a ekleme: desen köke sabitlenir (`/yol`), `\ * ? [` kaçırılır, sondaki boşluklar tek tek kaçırılır; satır sonu
+  içeren ad reddedilir (yazılamaz). Dosyanın CRLF/LF tercihi korunur.
+- Stage'de bir şey yokken commit denenmez (`KindNothingToCommit`) — **istisna:** merge sonuçlandırılırken (çakışmayı "bizimki"
+  lehine çözmek stage'i boş bırakır ama commit yine gerekir).
+- `HasStagedChanges` önce reponun varlığına bakar: repo dışında `git diff --cached --quiet` dosya karşılaştırma aracına döner
+  ve çıkış kodu 1 "değişiklik var" diye okunurdu. Bu hata testle yakalandı.
+- Hook reddi: commit başarısız + tür bilinmiyor + çalıştırılabilir hook var → `KindHookFailed`. Aynı yardımcı (`hookInstalled`)
+  push'ta `pre-push` için de kullanılıyor.
+- `commit.template` için ek önlem gerekmedi: mesaj dosyadan (`--file`) gelince git şablonu zaten yok sayıyor (testle doğrulandı).
+- Yeni tür: `KindPathIgnored` (yok sayılan dosyayı stage etme).
+
+### A-023 — diff (2026-11-11)
+- Hunk'ın nerede bittiğine başlıktaki satır sayıları karar verir, satırın görünüşü değil: dosya içeriği `--- a/x` ya da
+  `diff --git …` gibi görünse de doğru ayrıştırılır.
+- `DiffStat` `--unified` vermez: `--unified`, `--patch`'i de açıyor ve numstat çıktısının arkasına yama ekleniyordu.
+- Commit diff'i `git diff <ebeveyn> <commit>` ile alınır; ebeveyn `rev-parse <commit>^1`, kök commit'te boş ağaç
+  (`hash-object -t tree --stdin`, SHA-256 repolarda da doğru). Merge commit'te ilk ebeveyn.
+- Tür değişimi (dosya → sembolik bağ) git tarafından silme + ekleme çifti olarak basılır; `ChangeTypeChanged` yalnızca
+  `old mode` / `new mode` satırlarında tür bitleri farklıysa çıkar.
+- Bilerek kullanıcıya bırakılan ayarlar: `diff.orderFile` (yalnızca dosya sırası), `diff.algorithm`, `diff.ignoreSubmodules`.
+
+### A-024 — log (2026-11-11)
+- Biçim: 12 alan, `%x00` ile ayrık, `-z` ile commit sonu da NUL. Alan sayısı 12'nin katı değilse hata (sessiz kayma yok).
+- Yazar / mesaj araması **düz metin** (`--fixed-strings`): arama kutusuna `fix(ui)` ya da `[wip]` yazan kişi regex kastetmez.
+- Yazar adları commit'te yazıldığı gibi (`%an`, `--no-use-mailmap`); mailmap ayrıca `--author` eşleşmesini de değiştiriyordu.
+- `Since` / `Until` committer tarihine göre süzer (git'in davranışı).
+- `Follow` yalnızca tek yol verildiğinde geçerli, değilse yok sayılır; `log.follow` ayarı `--no-follow` ile etkisizleşir.
+- `ShortHash` uzunluğu kullanıcının `core.abbrev` ayarını izler (görsel tercih, bilerek).
+
+### A-025 — branch (2026-11-11)
+- Kısa ad tam ref'ten kesilir (`%(refname:short)` belirsizlikte değişiyor). Remote-tracking branch'in remote'u: adının
+  başladığı **en uzun** tanımlı remote adı (remote adında `/` olabilir); remote artık tanımlı değilse ilk yol parçası.
+- Takip (tracking) kuralı sabit, `branch.autoSetupMerge`'den bağımsız: remote-tracking branch'ten açılan branch onu izler,
+  başka hiçbir başlangıç noktası izlenmez.
+- Yalnızca remote'ta olan ada geçiş (`git`'in "guess" davranışı) açıkça yapılır: tam bir remote'ta varsa izleyen yerel branch
+  açılır, birden fazlasında varsa `KindAmbiguousRef`. `checkout.guess` / `checkout.defaultRemote` etkisiz.
+- `ValidateBranchName` git'in kurallarına ek olarak `HEAD`, `@`, `@{-1}` türü kısaltmaları ve `refs/` ile başlayan adları reddeder.
+- Olmayan branch her işlemde aynı şekilde bildirilir (`KindRefNotFound`): önce `show-ref --verify` ile bakılır, çünkü git'in
+  mesajı alt komuta göre değişiyor.
+- `git switch` ve `git pull`'da `--end-of-options` kullanılmadı (eski sürümlerde bu komutların onu doğru işlediğinden emin
+  olunamadı); değerler `checkName`'den geçtiği için `-` ile başlayamaz, `--create` değeri ya da tam ref olarak verilir.
+- Yeni türler: `KindBranchCheckedOut`, `KindAmbiguousRef`.
+
+### A-026 — remote: fetch / pull / push (2026-11-11)
+- Remote her zaman tanımlı bir **ad**dır, URL değil; tanımlı değilse git çalıştırılmadan `KindNoRemote`.
+- `Remotes()` URL'leri `remote get-url` ile alır (`insteadOf` uygulanmış, gerçekten kullanılacak adres) ve redakte eder.
+- `Fetch`: `Prune=false` iken budama kullanıcının `fetch.prune` ayarına bırakılır (bilerek ezilmedi).
+- `Pull`: detached HEAD'de her zaman reddedilir (kaynak açık verilse de); `Remote` ve `Branch` ya birlikte ya hiç;
+  bilinmeyen strateji `ArgInvalidStrategy`. `branch.<ad>.mergeOptions` içindeki `--squash --no-commit` de etkisizleştirilir.
+  Çakışma, çıktıdan değil reponun durumundan anlaşılır (çakışan dosya + merge/rebase sürüyor).
+- `Push` hedefi: remote verilmediyse `branch.<ad>.pushRemote` → `remote.pushDefault` → upstream'in remote'u → `origin`.
+  Uzak branch adı: branch o remote'ta bir upstream izliyorsa onun adı, yoksa yerel ad.
+- `--force-with-lease` her zaman `--force-if-includes` ile: uzak branch başkası tarafından ilerletilmişse, **fetch edilmiş olsa
+  bile** (ama yerel branch'e alınmamışsa) zorla push reddedilir (`KindStaleLease`). Arka plan fetch'i tek başına izin sayılmaz.
+  `ExpectedRemote` yalnızca `ForceWithLease` ile anlamlıdır.
+- `PushResult.Before`: git'in bildirdiği eski commit; yerelde varsa tam hash, yoksa git'in kısalttığı haliyle.
+- `pre-push` hook reddi `KindHookFailed`.
+- Yeni argüman kodu: `ArgInvalidStrategy`.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
 |---|---|
 | Log rotasyonu | M8 |
 | Cobra sabit metinlerinin çevirisi | M8 |
-| Windows'ta 4 CLI testi başarısız (ilk CI koşusu) | M1'e dönüldüğünde; ayrıntı "Milestone durumu → M0" |
+| Windows'ta 4 CLI testi (ilk CI koşusu) | Düzeltme `b60c051` bu branch'te; **CI'da henüz doğrulanmadı** (S-010) |
+| M1 testlerinin Windows ve macOS'ta koşması | Pull request açılınca (S-010); yerelde yalnızca Linux + 5 platform derleme |
+| `make cover` bulut konteynerinde düşüyor (`go: no such tool "covdata"`) | Ortam sorunu, `main`'de de aynı; kapsam elle ölçüldü. Mac ve CI'da beklenmiyor |
 | `.goreleaser.yaml`, `gp` kısa adı | M8 |
 | `init`, `clone` (ilerleme göstergeli), `log --graph` çizimi | M3 (A-020) |
 | GUI'de SSH parola / host anahtarı istemi | M7 (A-020) |
@@ -277,61 +355,52 @@ lint ✅, kapsam ✅, testler Linux ✅ ve macOS ✅, **Windows ❌**. Windows't
   `config` paketinden sormalı ya da `LOCALAPPDATA`'yı da izole etmeli.
 - `TestColorOnlyGoesToTerminals/terminal`: terminalde renk bekleniyor, Windows'ta renk gelmiyor. **Nedeni incelenmedi**
   (test ortamı mı, renk tespiti mi belli değil).
-Bu yüzden `main` şu an GitHub'da kırmızı görünür. Düzeltilmedi; M1'e dönüldüğünde ele alınacak.
+Bu yüzden `main` şu an GitHub'da kırmızı görünür. Düzeltme `fix/windows-cli-tests` (`b60c051`) ile yazıldı ve M1 branch'ine alındı; `main`'e M1 ile birlikte girecek.
 
-### M1 — Git çekirdeği ⏸ YARIDA BIRAKILDI (2026-11-11)
+### M1 — Git çekirdeği ✅ (2026-11-11) — `main`'e alınmayı bekliyor
+**Nerede:** branch `claude/serene-mccarthy-w86sgq` (GitHub'da). `main` hâlâ M0'da. `m1-git-core` ve `fix/windows-cli-tests`
+bu branch'in içinde; ikisi de artık gereksiz.
 
-> **Buradan devam et.** Kullanıcı 2026-11-11'de tüm işlemleri durdurdu. Aşağısı o andaki gerçek durumdur.
+**Biten:** ortak temel (A-016 … A-018) + 6 modülün tamamı:
 
-**Nerede:** branch **`m1-git-core`** (`main`'in üzerinde). `main` hâlâ M0'da (`e6e724b`) ve dokunulmadı.
-Repo GitHub'da (public, S-009): <https://github.com/muhammedeminalan/gitpal>. İki branch de yüklü ve yerelle aynı.
-Başka bir makinede devam etmek için:
-`git clone https://github.com/muhammedeminalan/gitpal.git && cd gitpal && git switch m1-git-core`
+| Modül | Dosya | Karar |
+|---|---|---|
+| status | `status.go` | A-021 |
+| stage + commit | `stage.go`, `commit.go` | A-022 |
+| diff | `diff.go` | A-023 |
+| log | `log.go` | A-024 |
+| branch | `branch.go` | A-025 |
+| remote | `remote.go` | A-026 |
 
-**Biten — ortak temel** (commit `53f4685`, `318a5ab`):
-- 22 yeni hata türü + stderr eşleştirme tablosu (A-016)
-- TR/EN hata açıklamaları, `git.Error.Localize`, `ArgError` (A-017)
-- `args.go`: NUL ayrıştırma, stdin'den pathspec, yol ve ad kontrolü, ağ zaman aşımı (A-018)
-- `Runner.Head`
-- M1 tasarımı: `docs/M1_PLAN.md` (A-019)
+Ayrıca: modül yolu düzeltildi (A-001), Windows CLI test düzeltmesi alındı, 3 yeni hata türü + 1 argüman kodu (TR + EN).
 
-**Yazılmayan — 6 modülün tamamı** (hiçbirinde tek satır kod yok; tarifleri `docs/M1_PLAN.md`):
-
-| # | Modül | Dosya | Kapsam |
-|---|---|---|---|
-| 1 | status | `status.go` | `status --porcelain=v2 -z` ayrıştırma, ahead/behind, yarım kalan merge/rebase tespiti |
-| 2 | stage + commit | `stage.go`, `commit.go` | add / unstage / restore, `.gitignore`'a ekleme, commit, amend, hook hatası |
-| 3 | diff | `diff.go` | unified diff ayrıştırma, binary tespiti, numstat |
-| 4 | log | `log.go` | geçmiş, filtreler, commit detayı, son N mesaj (AI için) |
-| 5 | branch | `branch.go` | listele / oluştur / geç / yeniden adlandır / sil, ad doğrulama ve öneri |
-| 6 | remote | `remote.go` | fetch, pull (3 strateji), push (`--force-with-lease`), remote listesi |
-
-**Durdurulduğu andaki doğrulama** (`m1-git-core`, 2026-11-11):
+**Doğrulama** (Linux, git 2.43, Go 1.26):
+- `golangci-lint run ./...` (v2.15.0, CI ile aynı sürüm) → 0 sorun
 - `go test -race -count=1 ./...` → geçti
-- `make cover` → `internal/core` kapsamı %93,5 (eşik %80)
+- `internal/core` kapsamı %93,9 (eşik %80) — `make cover` bu konteynerde ortam sorunu yüzünden düştüğü için aynı komut elle ölçüldü
 - `make cross` → 5 platform derleme + vet temiz
-- `make lint` → **2 uyarı**: `args.go` içindeki `literalPathspecsEnv` ve `endOfOptions` kullanılmıyor. Beklenen: bunları
-  kullanacak modüller henüz yok. Yani **`make check` şu an lint adımında başarısız**; modüller yazılınca kapanır.
+- "Düşmanca ayar" testlerinin gerçekten yakaladığı, bayraklar tek tek kaldırılarak sınandı (mutasyon). Yakalanmayan iki bayrak
+  var: pull'da `--ff-only` yanındaki `--no-rebase` ve `--rebase` yanındaki `--ff`. git 2.43'te gereksizler; 2.34 öncesi için
+  bırakıldı, o sürümlerde **denenmedi**.
 
-**Devam etmek için sıra:**
-1. `git switch m1-git-core` ve `docs/M1_PLAN.md`'yi oku.
-   - Önce iki küçük temizlik: modül yolunu `github.com/muhammedeminalan/gitpal` yap (A-001 güncellemesi) ve Windows'ta düşen
-     4 CLI testini düzelt (yukarıda M0 → ilk CI koşusu). İkisi de modüllerden bağımsız.
-2. Modülleri yaz (her biri: önce test, başarısız olduğunu gör, sonra kod). Önerilen sıra tabloda; hepsi birbirinden bağımsız.
-3. Yeni hata türleri çıktıysa `errors.go` + `localize.go` + `i18n/messages_git.go`'ya işle (TR + EN).
-4. Her modülü bağımsız bir gözle incele; bulunan hatayı önce başarısız testle kanıtla.
-5. `make check` yeşil olana kadar düzelt.
-6. Bu bölümü "M1 ✅" olarak güncelle, modüllerde alınan kararları yukarıya ekle.
-7. `main`'e al: pull request aç (CI üç işletim sisteminde koşar) ya da `git switch main && git merge --ff-only m1-git-core`
-   ve push (S-009). Push kullanıcının kararıdır.
+**Doğrulanmayan:**
+- Windows ve macOS'ta test koşusu (S-010). Riskli yerler: hook testleri (Windows'ta hook'lar Git for Windows'un `sh`'ıyla
+  çalışır varsayımı), `rev-parse --git-path` çıktısının yol biçimi.
+- git 2.30 – 2.42. Kullanılan bayrakların hepsi 2.30'da var olmalı (en yenileri: `push --force-if-includes` ve
+  `rev-parse --end-of-options`, ikisi de 2.30), ama eski bir git'le koşulmadı.
+- Planın 4. adımındaki "bağımsız gözle inceleme" ayrı bir tur olarak yapılmadı; yerine mutasyon kontrolleri var.
 
-Claude Code ile devam edilecekse söylenecek tek şey: *"DECISIONS.md'deki M1 notundan devam et."*
+**Sıradaki adımlar:**
+1. Pull request aç (`claude/serene-mccarthy-w86sgq` → `main`): CI üç işletim sisteminde koşar. Windows'ta düşen çıkarsa düzelt.
+2. Birleşince `m1-git-core` ve `fix/windows-cli-tests` branch'lerini sil.
+3. M2 — Güvenlik katmanı: risk sınıfları, kurallar, backup ref'leri, `history.jsonl`, `undo`. M1'in buna bıraktıkları:
+   `Restore` / `DeleteBranch(force)` / `Push(ForceWithLease)` çevresine onay + yedek; pull öncesi kirli çalışma alanı;
+   `RemoteContains` ile "push edilmiş commit'i amend etme" uyarısı; `AheadBehind` ile push öncesi kontrol.
 
-**Tahmini kalan süre** (M0 ve M1 temelinin hızından çıkarılmış tahmin, ölçüm değil):
+**Tahmini kalan süre** (tahmin, ölçüm değil):
 
 | Milestone | Süre |
 |---|---|
-| M1 kalanı (6 modül + bütünleştirme) | 2–3 saat sırayla, ~1 saat paralel |
 | M2 Güvenlik katmanı | ~2 saat |
 | M3 CLI + TUI | 3–4 saat |
 | M4 AI commit mesajı | 2–3 saat |
@@ -340,4 +409,4 @@ Claude Code ile devam edilecekse söylenecek tek şey: *"DECISIONS.md'deki M1 no
 | M7 GUI | 6–8 saat (en belirsiz) |
 | M8 Cila ve dağıtım | 2–3 saat |
 
-Toplam yaklaşık 22–28 saat. `gitpal save` (add → AI commit → push) M4 sonunda çalışır.
+`gitpal save` (add → AI commit → push) M4 sonunda çalışır.

@@ -1,7 +1,7 @@
 # M1 — Git çekirdeği: modül planı
 
-> **Durum (2026-11-11):** Ortak temel bitti ve `m1-git-core` branch'inde commit'li. Aşağıdaki 6 modülün **hiçbiri yazılmadı**.
-> Güncel durum ve sıradaki adımlar: [DECISIONS.md](../DECISIONS.md) → "Milestone durumu" → M1.
+> **Durum (2026-11-11):** 6 modülün tamamı yazıldı. Bu dosya artık tasarımın kaydıdır; uygulamada tasarımdan ayrılan
+> yerler ve alınan kararlar [DECISIONS.md](../DECISIONS.md) A-021 … A-026'da.
 
 Bu dosya M1'in tasarımıdır: her modülün dışa açık API'si, uyması gereken kurallar ve yazılması gereken testler.
 Kim devam ederse (insan ya da Claude Code) buradan başlar; yeniden tasarım gerekmez.

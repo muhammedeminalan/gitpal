@@ -190,9 +190,9 @@ func TestDiffChangeTypes(t *testing.T) {
 }
 
 func TestDiffAwkwardFileNames(t *testing.T) {
-	names := []string{"çalışma dosyası.txt", "-dash.txt", "a b/c d.txt", "x b/y.txt", "quote'single.txt", "*.txt"}
+	names := []string{"çalışma dosyası.txt", "-dash.txt", "a b/c d.txt", "x b/y.txt", "quote'single.txt"}
 	if runtime.GOOS != "windows" {
-		names = append(names, "tab\there.txt", "new\nline.txt", `double"quote.txt`, `back\slash.txt`)
+		names = append(names, "*.txt", "tab\there.txt", "new\nline.txt", `double"quote.txt`, `back\slash.txt`)
 	}
 	repo := gittest.NewRepo(t)
 	for _, name := range names {
@@ -231,8 +231,14 @@ func TestDiffAwkwardFileNames(t *testing.T) {
 	})
 
 	t.Run("a path filter is a name, not a pattern", func(t *testing.T) {
+		// On Windows, where no file can be called "*.txt", the filter still
+		// must not match the files a pattern would.
+		var want []string
+		if runtime.GOOS != "windows" {
+			want = []string{"*.txt"}
+		}
 		files := diffOf(t, repo, git.DiffOptions{Paths: []string{"*.txt"}})
-		assert.Equal(t, []string{"*.txt"}, diffPaths(files))
+		assert.ElementsMatch(t, want, diffPaths(files))
 
 		files = diffOf(t, repo, git.DiffOptions{Paths: []string{"a b"}})
 		assert.Equal(t, []string{"a b/c d.txt"}, diffPaths(files), "a directory limits the diff to what is under it")
