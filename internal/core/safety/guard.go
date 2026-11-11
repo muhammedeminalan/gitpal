@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
@@ -67,6 +68,8 @@ type Result struct {
 	Commit git.CommitResult
 	Push   git.PushResult
 	Pull   git.PullResult
+	Merge  git.MergeResult
+	Rebase git.RebaseResult
 }
 
 // Do runs an operation through the safety layer: it is assessed, refused if
@@ -92,6 +95,9 @@ func (g *Guard) Do(ctx context.Context, op Operation, approve Approver, opts DoO
 	entry := history.Entry{
 		Time: stamp, Op: string(op.Kind), Branch: a.branch, Before: a.head,
 		Paths: op.Paths, Target: target(op), Detail: detail(op),
+	}
+	if op.Kind == OpStashDrop {
+		entry.Detail = a.stashMessage
 	}
 	if a.BackupCommit != "" {
 		if entry.Backup, err = g.backup(ctx, backupPrefix, stamp, string(op.Kind), a.BackupCommit); err != nil {
@@ -170,6 +176,18 @@ func (g *Guard) run(ctx context.Context, a Assessment, res *Result) (err error) 
 		res.Pull, err = g.git.Pull(ctx, g.dir, op.PullOptions)
 	case OpSwitch:
 		err = g.git.SwitchBranch(ctx, g.dir, op.Branch)
+	case OpMerge:
+		res.Merge, err = g.git.Merge(ctx, g.dir, op.MergeOptions)
+	case OpRebase:
+		res.Rebase, err = g.git.Rebase(ctx, g.dir, op.RebaseOptions)
+	case OpCherryPick:
+		err = g.git.CherryPick(ctx, g.dir, op.Revs)
+	case OpRevert:
+		err = g.git.Revert(ctx, g.dir, op.Revs, op.Mainline)
+	case OpStashDrop:
+		err = g.git.StashDrop(ctx, g.dir, op.StashIndex)
+	case OpAbort:
+		_, err = g.git.AbortOperation(ctx, g.dir)
 	default:
 		err = fmt.Errorf("safety: unknown operation %q", op.Kind)
 	}
@@ -187,7 +205,15 @@ func target(op Operation) string {
 		return op.PushOptions.Remote
 	case OpPull:
 		return op.PullOptions.Remote
-	case OpCommit, OpAmend, OpDiscard:
+	case OpMerge:
+		return op.MergeOptions.Rev
+	case OpRebase:
+		return op.RebaseOptions.Upstream
+	case OpStashDrop:
+		return git.StashRef(op.StashIndex)
+	case OpCherryPick, OpRevert:
+		return strings.Join(op.Revs, " ")
+	case OpCommit, OpAmend, OpDiscard, OpAbort:
 	}
 	return ""
 }
@@ -199,7 +225,10 @@ func detail(op Operation) string {
 		return string(op.ResetMode)
 	case OpPull:
 		return string(op.PullOptions.Strategy)
-	case OpCommit, OpAmend, OpDiscard, OpDeleteBranch, OpPush, OpForcePush, OpSwitch:
+	case OpMerge:
+		return string(op.MergeOptions.Mode)
+	case OpCommit, OpAmend, OpDiscard, OpDeleteBranch, OpPush, OpForcePush, OpSwitch,
+		OpRebase, OpCherryPick, OpRevert, OpStashDrop, OpAbort:
 	}
 	return ""
 }
@@ -212,4 +241,56 @@ func failureKind(err error) string {
 		return "arg_" + string(argErr.Code)
 	}
 	return string(git.KindOf(err))
+}
+
+// OpContinue is recorded when an operation that stopped on conflicts is
+// carried on; its Before is where that operation started, so undoing it
+// takes the whole operation back.
+const (
+	OpContinue OpKind = "continue"
+	OpSkip     OpKind = "skip"
+)
+
+// Continue carries on with the operation that stopped on conflicts.
+func (g *Guard) Continue(ctx context.Context) (git.Operation, history.Entry, error) {
+	return g.step(ctx, OpContinue, g.git.ContinueOperation)
+}
+
+// Skip drops the commit a rebase, cherry-pick or revert stopped at and
+// carries on.
+func (g *Guard) Skip(ctx context.Context) (git.Operation, history.Entry, error) {
+	return g.step(ctx, OpSkip, g.git.SkipOperation)
+}
+
+func (g *Guard) step(ctx context.Context, kind OpKind, run func(context.Context, string) (git.Operation, error)) (git.Operation, history.Entry, error) {
+	st, err := g.git.Status(ctx, g.dir, git.StatusOptions{Untracked: git.UntrackedNone})
+	if err != nil {
+		return git.OpNone, history.Entry{}, err
+	}
+	// Where the stopped operation began: its own record, if gitpal ran it.
+	before := st.Branch.OID
+	if entries, err := g.history.Entries(); err == nil {
+		for i := len(entries) - 1; i >= 0; i-- {
+			if entries[i].Failed == string(git.KindConflict) {
+				before = entries[i].Before
+				break
+			}
+		}
+	}
+	op, runErr := run(ctx, g.dir)
+	if git.ErrNoOperation(runErr) {
+		return op, history.Entry{}, runErr
+	}
+	entry := history.Entry{Time: g.now(), Op: string(kind), Detail: string(op), Branch: st.Branch.Head, Before: before}
+	if head, born, err := g.git.Head(ctx, g.dir); err == nil && born {
+		entry.After = head
+	}
+	if runErr != nil {
+		entry.Failed = failureKind(runErr)
+	}
+	written, histErr := g.history.Append(entry)
+	if runErr != nil {
+		return op, written, runErr
+	}
+	return op, written, histErr
 }

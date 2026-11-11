@@ -57,6 +57,12 @@ func (e Effect) describe(lang i18n.Lang) string {
 		return i18n.T(lang, i18n.MsgEffectPushed, e.Count)
 	case EffectCommitRewritten:
 		return i18n.T(lang, i18n.MsgEffectRewritten, listItems(e.Items))
+	case EffectCommitsReplayed:
+		return i18n.T(lang, i18n.MsgEffectReplayed, e.Count)
+	case EffectStashDropped:
+		return i18n.T(lang, i18n.MsgEffectStashDropped, listItems(e.Items))
+	case EffectOperationAborted:
+		return i18n.T(lang, i18n.MsgEffectAborted, listItems(e.Items))
 	}
 	return string(e.Kind)
 }

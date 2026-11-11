@@ -11,4 +11,5 @@ var catalog = mergeCatalogs(
 	safetyMessages,
 	cliMessages,
 	aiMessages,
+	advancedMessages,
 )

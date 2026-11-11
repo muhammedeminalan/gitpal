@@ -122,7 +122,19 @@ func (g *Guard) planSteps(ctx context.Context, plan *UndoPlan, st git.Status) (r
 		}
 		plan.steps = func(ctx context.Context) error { return g.git.CreateBranch(ctx, g.dir, e.Target, e.Backup) }
 
-	case OpPull:
+	case OpStashDrop:
+		if !g.refExists(ctx, e.Backup) {
+			return ErrUndoNoBackup, nil
+		}
+		plan.steps = func(ctx context.Context) error {
+			hash, err := g.git.ResolveCommit(ctx, g.dir, e.Backup)
+			if err != nil {
+				return err
+			}
+			return g.git.StashStore(ctx, g.dir, hash, e.Detail)
+		}
+
+	case OpPull, OpMerge, OpRebase, OpCherryPick, OpRevert, OpContinue, OpSkip:
 		if e.Before == "" {
 			return ErrUndoNotSupported.with(e.Op), nil
 		}

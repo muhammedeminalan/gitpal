@@ -32,6 +32,7 @@ const (
 	MsgSafetyUndoBranchExists  Key = "safety.undo.branch_exists"
 	MsgSafetyUndoNotSupported  Key = "safety.undo.not_supported"
 	MsgSafetyBackupNotFound    Key = "safety.backup.not_found"
+	MsgSafetyNothingToAbort    Key = "safety.nothing_to_abort"
 	MsgSafetyBackupUnknownName Key = "safety.backup.unknown_name"
 )
 
@@ -144,6 +145,10 @@ var safetyMessages = map[Key]message{
 	MsgSafetyUndoNotSupported: {
 		tr: "`%s` işlemi otomatik olarak geri alınamaz.",
 		en: "A `%s` cannot be undone automatically.",
+	},
+	MsgSafetyNothingToAbort: {
+		tr: "İptal edilecek yarım bir işlem (merge, rebase, cherry-pick, revert) yok.",
+		en: "There is no merge, rebase, cherry-pick or revert under way to abort.",
 	},
 	MsgSafetyBackupNotFound: {
 		tr: "Böyle bir yedek yok: %q.",

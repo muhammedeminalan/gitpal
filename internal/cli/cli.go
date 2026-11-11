@@ -72,8 +72,9 @@ type Env struct {
 	// input and output are both a terminal. Questions are only asked then.
 	Interactive func() bool
 	// Pick and Dashboard show the interactive screens.
-	Pick      func(ctx context.Context, opts tui.PickOptions) ([]string, error)
-	Dashboard func(ctx context.Context, opts tui.DashboardOptions) error
+	Pick         func(ctx context.Context, opts tui.PickOptions) ([]string, error)
+	Dashboard    func(ctx context.Context, opts tui.DashboardOptions) error
+	RebaseEditor func(ctx context.Context, opts tui.RebaseOptions) ([]git.RebaseStep, error)
 	// Editor opens a file in the user's editor.
 	Editor func(ctx context.Context, path string) error
 	// NewAI builds the AI provider.
@@ -99,10 +100,11 @@ func SystemEnv() Env {
 		Interactive: func() bool {
 			return term.IsTerminal(int(os.Stdin.Fd())) && isTerminal(os.Stdout) //nolint:gosec // see isTerminal
 		},
-		Pick:      tui.Pick,
-		Dashboard: tui.RunDashboard,
-		Editor:    openEditor,
-		NewAI:     ai.New,
+		Pick:         tui.Pick,
+		Dashboard:    tui.RunDashboard,
+		RebaseEditor: tui.EditRebase,
+		Editor:       openEditor,
+		NewAI:        ai.New,
 		ReadSecret: func() (string, error) {
 			fd := int(os.Stdin.Fd()) //nolint:gosec // a file descriptor always fits in an int
 			if !term.IsTerminal(fd) {

@@ -470,6 +470,41 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
   commit'i hiçbir zaman engellemez — yalnızca script `--ai` istediyse hata olur.
 - PR başlığı / açıklaması için `GeneratePRDescription` aynı yük ve temizlikle hazır (M6 kullanacak).
 
+### A-034 — İleri git (M5, 2026-11-11)
+- **İnteraktif rebase editörsüz yürür:** git hem todo listesi hem commit mesajı için bir editör çağırır. gitpal kendi ikilisini
+  editör olarak verir (`GIT_SEQUENCE_EDITOR` / `GIT_EDITOR` = `'<gitpal yolu>' __gitpal-sequence-editor|__gitpal-message-editor`);
+  `main()` ilk iş olarak `git.RunEditorHelper`'a bakar ve önceden yazılmış dosyayı git'in açtığı dosyanın üzerine kopyalar.
+  Editör komut satırında yalnızca gitpal'ın kendi yolu ve sabit bir rol argümanı var — kullanıcı girdisi kabuğa hiç girmez.
+  Mesaj kuyruğu git'in sorma sırasına göre dizilir: her `reword` için bir, `squash` içeren her zincir için (zincirin sonunda) bir.
+  `commit.cleanup=strip` sabitlenir (squash'ın varsayılan birleşik mesajındaki yorumlar temizlensin diye); **bilinen sınır:**
+  reword mesajında `#` ile başlayan satırlar silinir. Desteklenen eylemler: pick, reword, squash, fixup, drop (spec 4.6); `edit`
+  ve `exec` bilerek yok. `rebase.abbreviateCommands`, `rebase.autoSquash`, `sequence.editor`, `core.editor` etkisiz.
+- Merge kipleri açık bayraklarla (`--ff` / `--no-ff` / `--ff-only` / `--squash`), `--no-autostash`, `--no-edit`;
+  `merge.ff` ve `branch.<ad>.mergeOptions` değiştiremez.
+- Çakışma: merge / rebase / cherry-pick / revert / stash apply çakışmada durursa `KindConflict` (reponun durumuna bakılarak).
+  Çözüm: `Conflict` üç sürümü (`:1:` / `:2:` / `:3:`) okur; `ResolveConflict` bir tarafı alır — o taraf dosyayı sildiyse dosya
+  kaldırılır. "ours/theirs" git'in anlamıyla (rebase'de ters).
+- `continue` / `skip` güvenlik katmanından geçer ve geçmişe yazılır; kaydın `Before`'u çakışmada duran işlemin başladığı yer
+  olduğu için `undo` bütün işlemi geri alır. `abort` "dikkat" sınıfında (çakışma çözümleri kaybolur), geri alınamaz.
+- Risk sınıfları: merge ve cherry-pick "dikkat" + HEAD yedeği; rebase "dikkat", push edilmiş commit yeniden yazılıyorsa
+  "tehlikeli" (kural 3); revert "güvenli" (yeni commit ekler); stash drop "tehlikeli" + stash commit'i yedeklenir, undo
+  `stash store` ile geri koyar. Yarım işlem varken merge / rebase / cherry-pick / revert başlatılamaz (kural 9).
+- Cherry-pick: git'teki gibi birden çok revizyon tek yürüyüş oluşturur ("a..b c", c'den ulaşılabilen her şeyi de alır).
+- Tag: mesaj verilirse açıklamalı tag; imzalama kullanıcının `tag.gpgSign` ayarına uyar (commit'teki gibi), ama hafif tag
+  bu ayarla imzalı tag'e dönüştürülmez (`--no-sign`). Var olan tag'in üzerine yazılmaz.
+- Hunk stage: seçilen parçalardan yama kurulur, atlanan parçaların kaydırdığı satır numaraları yeniden hesaplanır,
+  `apply --cached --whitespace=nowarn` (geri almada `--reverse`). Yalnızca değişmiş, binary olmayan, taşınmamış dosyalar.
+  Çalışma alanından parça atma (discard hunk) yok — tehlikeli işlem olarak ayrıca tasarlanmalı.
+- Reflog: `log --walk-reflogs --date=unix`; seçici sıradan (`HEAD@{n}`), zaman `%gd`'den. Kurtarma = yeni branch.
+- Blame: `--porcelain` ayrıştırılır. Remote ekle / sil / yeniden adlandır / adres değiştir; adres `-` ile başlayamaz.
+  Submodule: durum (`submodule status` satırları) ve `update --init --recursive`. Kimlik: repo ya da genel.
+- `.gitignore` şablonları gömülü (go, node, python, flutter, swift, android, dotnet, macos, windows, jetbrains, vscode, env);
+  var olan kural tekrar eklenmez.
+- Çoklu repo: `workspace.repos` genel ayarda (repo dosyası ayarlayamaz). `workspace pull` her zaman yalnızca ileri sarar —
+  toplu işlemde hiçbir şey birleştirilmez ya da yeniden yazılmaz. Bir repodaki hata diğerlerini durdurmaz, sonunda çıkış kodu 1.
+- Düzeltme (testle bulundu): diff ayrıştırıcısı adında hem boşluk hem tırnak olan dosyada `---` satırının sonundaki sekmeyi
+  kırpmıyordu.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
@@ -477,7 +512,6 @@ tekrar geri alınmaz; ardışık `undo` çağrıları işlemleri birer birer ger
 | Log rotasyonu | M8 |
 | Cobra sabit metinlerinin çevirisi | M8 |
 | M2 testlerinin Windows ve macOS'ta koşması | `main`'e alınınca (CI); yerelde yalnızca Linux + 5 platform derleme |
-| merge / rebase / cherry-pick / stash drop'un güvenlik katmanından geçmesi | M5 (bu işlemler M5'te geliyor) |
 | `history.jsonl` boyut sınırı / rotasyonu | M8 |
 | `make cover` bulut konteynerinde düşüyor (`go: no such tool "covdata"`) | Ortam sorunu, `main`'de de aynı; kapsam elle ölçüldü. Mac ve CI'da beklenmiyor |
 | `.goreleaser.yaml`, `gp` kısa adı | M8 |
@@ -545,11 +579,17 @@ Sağlayıcılar, temizlik, büyük diff, onay, `commit --ai` / `save --ai`, `git
 5 platform derleme. **Doğrulanmayan:** gerçek bir API anahtarıyla gerçek bir sağlayıcıya istek atılmadı (bu ortamda anahtar yok);
 sağlayıcılar sahte HTTP sunucularıyla sınandı. `gitpal save` artık add → AI commit → push akışını tamamlıyor (kabul kriteri 1).
 
+### M5 — İleri git ✅ (2026-11-11)
+merge, rebase (interaktif TUI dahil), cherry-pick, revert, continue / skip / abort, çakışma listesi ve çözümü, stash, tag,
+reflog + recover, blame, hunk stage (`add -p`, `unstage -p`), remote yönetimi, submodule, kimlik, `.gitignore` şablonları,
+workspace (A-034). Doğrulama: lint 0, race testleri, kapsam %91,2, 5 platform derleme.
+**Doğrulanmayan:** interaktif rebase'in Windows'ta çalışması (editör komutu Git for Windows'un `sh`'ıyla çalışır varsayımı) —
+`main`'e alınınca CI gösterecek. Satır bazında stage (spec "V1.1, zaman kalırsa") yapılmadı.
+
 **Tahmini kalan süre** (tahmin, ölçüm değil):
 
 | Milestone | Süre |
 |---|---|
-| M5 İleri git | 3–4 saat |
 | M6 GitHub | ~3 saat |
 | M7 GUI | 6–8 saat (en belirsiz) |
 | M8 Cila ve dağıtım | 2–3 saat |

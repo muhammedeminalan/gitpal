@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
+	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
 )
 
 // blockedDuringOperation are the operations that must wait while a merge or
@@ -17,6 +18,7 @@ import (
 // file is part of resolving one, so those stay allowed.
 var blockedDuringOperation = map[OpKind]bool{
 	OpAmend: true, OpReset: true, OpPull: true, OpSwitch: true, OpForcePush: true,
+	OpMerge: true, OpRebase: true, OpCherryPick: true, OpRevert: true,
 }
 
 // Assess judges an operation without running it: its risk, what it will do,
@@ -47,6 +49,22 @@ func (g *Guard) Assess(ctx context.Context, op Operation) (Assessment, error) {
 		g.assessPull(&a, st)
 	case OpSwitch:
 		g.backupDirty(&a, st)
+	case OpMerge, OpCherryPick:
+		a.raise(RiskCaution)
+		a.BackupCommit = a.head
+		g.backupDirty(&a, st)
+	case OpRevert:
+		g.backupDirty(&a, st)
+	case OpRebase:
+		err = g.assessRebase(ctx, &a, st)
+	case OpStashDrop:
+		err = g.assessStashDrop(ctx, &a)
+	case OpAbort:
+		if st.Operation == git.OpNone {
+			return Assessment{}, errNothingToAbort
+		}
+		a.raise(RiskCaution)
+		a.Effects = append(a.Effects, Effect{Kind: EffectOperationAborted, Count: 1, Items: []string{string(st.Operation)}})
 	default:
 		err = fmt.Errorf("safety: unknown operation %q", op.Kind)
 	}
@@ -372,4 +390,55 @@ func humanSize(n int64) string {
 		return fmt.Sprintf("%.1f KB", float64(n)/kb)
 	}
 	return fmt.Sprintf("%d B", n)
+}
+
+// errNothingToAbort is returned when no operation is under way.
+var errNothingToAbort = &Error{key: i18n.MsgSafetyNothingToAbort}
+
+// assessRebase counts the commits a rebase rewrites and whether any of them
+// was already pushed (rule 3).
+func (g *Guard) assessRebase(ctx context.Context, a *Assessment, st git.Status) error {
+	opts := a.Op.RebaseOptions
+	plan, err := g.git.RebasePlan(ctx, g.dir, opts.Upstream)
+	if err != nil {
+		return err
+	}
+	a.raise(RiskCaution)
+	a.BackupCommit = a.head
+	g.backupDirty(a, st)
+	if len(plan) == 0 {
+		return nil
+	}
+	a.Effects = append(a.Effects, Effect{Kind: EffectCommitsReplayed, Count: len(plan)})
+	pushed := 0
+	for _, step := range plan {
+		on, err := g.git.RemoteContains(ctx, g.dir, step.Hash)
+		if err != nil {
+			return err
+		}
+		if on {
+			pushed++
+		}
+	}
+	if pushed > 0 {
+		a.add(Finding{Code: CodeRewritesPushed, Severity: SeverityWarn, Count: pushed})
+		a.raise(RiskDangerous)
+	}
+	return nil
+}
+
+func (g *Guard) assessStashDrop(ctx context.Context, a *Assessment) error {
+	stashes, err := g.git.Stashes(ctx, g.dir)
+	if err != nil {
+		return err
+	}
+	i := a.Op.StashIndex
+	if i < 0 || i >= len(stashes) {
+		return &git.Error{Kind: git.KindRefNotFound, Args: []string{"stash", "drop", git.StashRef(i)}, ExitCode: -1}
+	}
+	a.raise(RiskDangerous)
+	a.BackupCommit = stashes[i].Hash
+	a.stashMessage = stashes[i].Message
+	a.Effects = append(a.Effects, Effect{Kind: EffectStashDropped, Count: 1, Items: []string{stashes[i].Ref + " " + stashes[i].Message}})
+	return nil
 }

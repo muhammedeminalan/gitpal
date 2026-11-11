@@ -76,6 +76,9 @@ func newPicker(title, help string, items []Item) picker {
 func (p picker) Init() tea.Cmd { return nil }
 
 func (p picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if keys, ok := splitRunes(msg); ok {
+		return applyEach(p, keys)
+	}
 	key, ok := msg.(tea.KeyMsg)
 	if !ok {
 		return p, nil
@@ -144,4 +147,30 @@ func (p picker) View() string {
 	}
 	b.WriteString("\n" + helpStyle.Render(p.help) + "\n")
 	return b.String()
+}
+
+// splitRunes breaks several typed characters that arrived together (a paste,
+// a fast typist, a script) into one key each, so every one is acted on.
+func splitRunes(msg tea.Msg) ([]tea.KeyMsg, bool) {
+	key, ok := msg.(tea.KeyMsg)
+	if !ok || key.Type != tea.KeyRunes || len(key.Runes) < 2 || key.Paste {
+		return nil, false
+	}
+	keys := make([]tea.KeyMsg, len(key.Runes))
+	for i, r := range key.Runes {
+		keys[i] = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}}
+	}
+	return keys, true
+}
+
+// applyEach feeds keys to a model one at a time, keeping the last command
+// (a quit stops the rest).
+func applyEach(m tea.Model, keys []tea.KeyMsg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+	for _, k := range keys {
+		var cmd tea.Cmd
+		m, cmd = m.Update(k)
+		cmds = append(cmds, cmd)
+	}
+	return m, tea.Batch(cmds...)
 }

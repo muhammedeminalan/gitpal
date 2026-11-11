@@ -1,0 +1,11 @@
+# .NET / C#
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+.vs/
+TestResults/
+*.nupkg
+packages/
+appsettings.Development.json

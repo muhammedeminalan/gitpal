@@ -219,6 +219,9 @@ func (l *layer) decodeInto(cfg *Config) error {
 		// element by element.
 		cfg.Safety.ProtectedBranches = nil
 	}
+	if l.has("workspace.repos") {
+		cfg.Workspace.Repos = nil
+	}
 	return l.v.Unmarshal(cfg)
 }
 

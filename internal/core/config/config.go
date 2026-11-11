@@ -84,6 +84,14 @@ type Config struct {
 	Pull     PullConfig   `mapstructure:"pull" json:"pull"`
 	GitHub   GitHubConfig `mapstructure:"github" json:"github"`
 	UI       UIConfig     `mapstructure:"ui" json:"ui"`
+	// Workspace is the list of repositories `gitpal workspace` works on
+	// together (spec §4.12).
+	Workspace WorkspaceConfig `mapstructure:"workspace" json:"workspace"`
+}
+
+// WorkspaceConfig lists the repositories of the workspace.
+type WorkspaceConfig struct {
+	Repos []string `mapstructure:"repos" json:"repos"`
 }
 
 // CommitConfig shapes commit messages.

@@ -94,6 +94,8 @@ github:
   auth: gh-cli
 ui:
   theme: dark
+workspace:
+  repos: [/src/a, /src/b]
 `)
 
 	got, err := config.Load(config.LoadOptions{GlobalPath: path})
@@ -114,9 +116,10 @@ ui:
 			BackupRetentionDays: 7,
 			WarnOnSecrets:       false,
 		},
-		Pull:   config.PullConfig{Strategy: config.PullRebase},
-		GitHub: config.GitHubConfig{Auth: config.AuthGHCLI},
-		UI:     config.UIConfig{Theme: config.ThemeDark},
+		Pull:      config.PullConfig{Strategy: config.PullRebase},
+		GitHub:    config.GitHubConfig{Auth: config.AuthGHCLI},
+		UI:        config.UIConfig{Theme: config.ThemeDark},
+		Workspace: config.WorkspaceConfig{Repos: []string{"/src/a", "/src/b"}},
 	}
 	assert.Equal(t, want, got.Config)
 	assert.True(t, got.GlobalFound)

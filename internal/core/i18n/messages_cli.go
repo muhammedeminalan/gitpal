@@ -25,6 +25,9 @@ const (
 	MsgEffectRemote       Key = "cli.effect.remote"
 	MsgEffectPushed       Key = "cli.effect.pushed"
 	MsgEffectRewritten    Key = "cli.effect.rewritten"
+	MsgEffectReplayed     Key = "cli.effect.replayed"
+	MsgEffectStashDropped Key = "cli.effect.stash_dropped"
+	MsgEffectAborted      Key = "cli.effect.aborted"
 	MsgBackupCommit       Key = "cli.backup.commit"
 	MsgBackupWorktree     Key = "cli.backup.worktree" //nolint:gosec // G101: a message key, not a credential
 	MsgConfirmQuestion    Key = "cli.confirm.question"
@@ -207,6 +210,9 @@ var cliMessages = map[Key]message{
 	MsgEffectRemote:       {tr: "uzak branch'teki %d commit seninkilerle değiştirilecek", en: "%d commit(s) on the remote branch are replaced by yours"},
 	MsgEffectPushed:       {tr: "%d commit gönderilecek", en: "%d commit(s) are sent"},
 	MsgEffectRewritten:    {tr: "son commit yenisiyle değiştirilecek (%s)", en: "the last commit is replaced by a new one (%s)"},
+	MsgEffectReplayed:     {tr: "%d commit yeniden yazılacak (yeni hash'ler alacak)", en: "%d commit(s) are rewritten (they get new hashes)"},
+	MsgEffectStashDropped: {tr: "stash silinecek: %s", en: "stash entry deleted: %s"},
+	MsgEffectAborted:      {tr: "yarım kalan %s iptal edilecek; çakışma çözümlerin kaybolur", en: "the %s under way is given up, with your conflict resolutions"},
 	MsgBackupCommit:       {tr: "Yedek: %s commit'i saklanacak", en: "Backup: commit %s is kept"},
 	MsgBackupWorktree:     {tr: "Yedek: commit'lenmemiş değişikliklerin saklanacak", en: "Backup: your uncommitted changes are kept"},
 	MsgConfirmQuestion:    {tr: "Devam edilsin mi? [e/H] ", en: "Go ahead? [y/N] "},

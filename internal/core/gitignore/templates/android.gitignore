@@ -1,0 +1,14 @@
+# Android / Kotlin / Java
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+captures/
+.externalNativeBuild/
+.cxx/
+*.jks
+*.keystore

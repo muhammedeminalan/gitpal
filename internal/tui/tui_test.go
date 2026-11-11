@@ -260,3 +260,60 @@ func TestRunDashboardQuitsOnQ(t *testing.T) {
 
 	require.NoError(t, err)
 }
+
+func TestRebaseEditor(t *testing.T) {
+	steps := []git.RebaseStep{
+		{Action: git.RebasePick, Hash: "aaaaaaaa1", Subject: "one"},
+		{Action: git.RebasePick, Hash: "bbbbbbbb2", Subject: "two"},
+		{Action: git.RebasePick, Hash: "cccccccc3", Subject: "three"},
+	}
+	var m tea.Model = newRebaseEditor(i18n.EN, "Rebase onto main", steps)
+
+	m, _ = m.Update(key("s")) // the first cannot be squashed
+	assert.Equal(t, git.RebasePick, m.(rebaseEditor).steps[0].Action)
+
+	m, _ = m.Update(key("J")) // move "one" down
+	m, _ = m.Update(key("f")) // fold "one" into "two"
+	m, _ = m.Update(key("down"))
+	m, _ = m.Update(key("r")) // reword "three"
+	e := m.(rebaseEditor)
+	require.True(t, e.editing)
+	assert.Equal(t, "three", e.input.Value(), "editing starts from the subject")
+	for range 5 {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	}
+	for _, r := range "THREE" {
+		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	m, _ = m.Update(key("enter"))
+	assert.Contains(t, m.View(), "THREE")
+	assert.Contains(t, m.View(), "fixup")
+
+	m, cmd := m.Update(key("enter"))
+	require.NotNil(t, cmd)
+	got := m.(rebaseEditor)
+	assert.True(t, got.done)
+	assert.Equal(t, []git.RebaseStep{
+		{Action: git.RebasePick, Hash: "bbbbbbbb2", Subject: "two"},
+		{Action: git.RebaseFixup, Hash: "aaaaaaaa1", Subject: "one"},
+		{Action: git.RebaseReword, Hash: "cccccccc3", Subject: "three", Message: "THREE"},
+	}, got.steps)
+	assert.Equal(t, git.RebasePick, steps[0].Action, "the caller's plan is not changed")
+
+	t.Run("a plan that starts with a fold cannot start", func(t *testing.T) {
+		var m tea.Model = newRebaseEditor(i18n.EN, "t", []git.RebaseStep{{Action: git.RebaseDrop, Hash: "a"}, {Action: git.RebaseFixup, Hash: "b"}})
+		m, _ = m.Update(key("enter"))
+		assert.False(t, m.(rebaseEditor).done)
+		m, _ = m.Update(key("q"))
+		assert.True(t, m.(rebaseEditor).canceled)
+	})
+
+	t.Run("runs as a program", func(t *testing.T) {
+		var out strings.Builder
+		got, err := EditRebase(context.Background(), RebaseOptions{Lang: i18n.TR, Steps: steps, In: strings.NewReader("jd\r"), Out: &out})
+		require.NoError(t, err)
+		assert.Equal(t, git.RebaseDrop, got[1].Action)
+		_, err = EditRebase(context.Background(), RebaseOptions{Steps: steps, In: strings.NewReader("q"), Out: &out})
+		assert.ErrorIs(t, err, ErrCanceled)
+	})
+}

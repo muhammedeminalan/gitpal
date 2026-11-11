@@ -43,6 +43,10 @@ func (a *app) newRootCmd() *cobra.Command {
 		a.newBranchCmd(), a.newLogCmd(),
 		a.newUndoCmd(), a.newBackupsCmd(), a.newHistoryCmd(),
 		a.newConfigCmd(), a.newInitCmd(), a.newCloneCmd(), a.newAuthCmd(),
+		a.newMergeCmd(), a.newRebaseCmd(), a.newCherryPickCmd(), a.newRevertCmd(),
+		a.newContinueCmd(), a.newAbortCmd(), a.newSkipCmd(), a.newConflictsCmd(), a.newResolveCmd(),
+		a.newStashCmd(), a.newTagCmd(), a.newReflogCmd(), a.newRecoverCmd(), a.newBlameCmd(),
+		a.newRemoteCmd(), a.newSubmoduleCmd(), a.newIdentityCmd(), a.newWorkspaceCmd(),
 	)
 	// Without a subcommand: the interactive screen for a person, help for a
 	// script.

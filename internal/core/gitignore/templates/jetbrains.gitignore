@@ -1,0 +1,4 @@
+# JetBrains (IntelliJ, Rider, GoLand, Android Studio)
+.idea/
+*.iml
+out/

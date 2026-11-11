@@ -63,6 +63,12 @@ const (
 	OpForcePush    OpKind = "force-push"
 	OpPull         OpKind = "pull"
 	OpSwitch       OpKind = "switch"
+	OpMerge        OpKind = "merge"
+	OpRebase       OpKind = "rebase"
+	OpCherryPick   OpKind = "cherry-pick"
+	OpRevert       OpKind = "revert"
+	OpStashDrop    OpKind = "stash-drop"
+	OpAbort        OpKind = "abort"
 )
 
 // Operation is something the caller wants to do. Build one with the
@@ -84,6 +90,14 @@ type Operation struct {
 	PushOptions git.PushOptions
 	// PullOptions is used by OpPull.
 	PullOptions git.PullOptions
+	// MergeOptions is used by OpMerge, RebaseOptions by OpRebase.
+	MergeOptions  git.MergeOptions
+	RebaseOptions git.RebaseOptions
+	// Revs and Mainline are used by OpCherryPick and OpRevert.
+	Revs     []string
+	Mainline int
+	// StashIndex is used by OpStashDrop.
+	StashIndex int
 }
 
 // Commit records the staged changes, or amends the last commit when
@@ -124,6 +138,26 @@ func Pull(opts git.PullOptions) Operation { return Operation{Kind: OpPull, PullO
 
 // Switch checks out another branch.
 func Switch(branch string) Operation { return Operation{Kind: OpSwitch, Branch: branch} }
+
+// Merge merges a branch into the current one.
+func Merge(opts git.MergeOptions) Operation { return Operation{Kind: OpMerge, MergeOptions: opts} }
+
+// Rebase replays the current branch onto another; with steps, interactively.
+func Rebase(opts git.RebaseOptions) Operation { return Operation{Kind: OpRebase, RebaseOptions: opts} }
+
+// CherryPick applies the changes of other commits.
+func CherryPick(revs ...string) Operation { return Operation{Kind: OpCherryPick, Revs: revs} }
+
+// Revert adds commits that undo the given ones.
+func Revert(mainline int, revs ...string) Operation {
+	return Operation{Kind: OpRevert, Revs: revs, Mainline: mainline}
+}
+
+// StashDrop deletes a stash entry.
+func StashDrop(index int) Operation { return Operation{Kind: OpStashDrop, StashIndex: index} }
+
+// Abort gives up the merge, rebase, cherry-pick or revert under way.
+func Abort() Operation { return Operation{Kind: OpAbort} }
 
 // Policy is the part of gitpal's configuration the safety layer follows.
 type Policy struct {
@@ -292,6 +326,13 @@ const (
 	EffectCommitsPushed EffectKind = "commits_pushed"
 	// EffectCommitRewritten: the last commit is replaced by a new one.
 	EffectCommitRewritten EffectKind = "commit_rewritten"
+	// EffectCommitsReplayed: these commits are rewritten by a rebase.
+	EffectCommitsReplayed EffectKind = "commits_replayed"
+	// EffectStashDropped: a stash entry is deleted.
+	EffectStashDropped EffectKind = "stash_dropped"
+	// EffectOperationAborted: the operation under way is given up, with the
+	// conflict resolutions made so far.
+	EffectOperationAborted EffectKind = "operation_aborted"
 )
 
 // Effect is one consequence of an operation.
@@ -335,6 +376,8 @@ type Assessment struct {
 	branch, head string
 	// unmerged is how many commits deleting a branch would lose.
 	unmerged int
+	// stashMessage is the message of the stash entry a drop deletes.
+	stashMessage string
 }
 
 // Blocked reports whether a finding stops the operation.
