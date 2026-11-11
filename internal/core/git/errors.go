@@ -68,6 +68,12 @@ const (
 	KindBranchExists ErrorKind = "branch_exists"
 	// KindBranchNotMerged: deleting the branch would lose commits.
 	KindBranchNotMerged ErrorKind = "branch_not_merged"
+	// KindBranchCheckedOut: the branch cannot be deleted because it is checked
+	// out, here or in another worktree.
+	KindBranchCheckedOut ErrorKind = "branch_checked_out"
+	// KindAmbiguousRef: a name stands for more than one thing, e.g. a branch
+	// that exists on two remotes.
+	KindAmbiguousRef ErrorKind = "ambiguous_ref"
 	// KindInvalidName: git rejected a branch or ref name.
 	KindInvalidName ErrorKind = "invalid_name"
 	// KindPathspecNoMatch: a given path matches no file git knows.
@@ -87,7 +93,7 @@ var allKinds = []ErrorKind{
 	KindNothingToCommit, KindIdentityMissing, KindHookFailed, KindAuthFailed, KindRemoteUnreachable,
 	KindNoRemote, KindRejected, KindStaleLease, KindRemoteDeclined, KindNoUpstream, KindDiverged,
 	KindDirtyWorktree, KindConflict, KindOperationInProgress, KindDetachedHead, KindUnbornBranch,
-	KindBranchExists, KindBranchNotMerged, KindInvalidName, KindPathspecNoMatch, KindPathIgnored,
+	KindBranchExists, KindBranchNotMerged, KindBranchCheckedOut, KindAmbiguousRef, KindInvalidName, KindPathspecNoMatch, KindPathIgnored,
 	KindRefNotFound, KindIndexLocked,
 }
 
@@ -191,7 +197,9 @@ var stderrKinds = []struct {
 		"network is unreachable", "failed to connect", "does not appear to be a git repository",
 		"repository not found", "could not read from remote repository", "unable to access",
 	}},
-	{KindNoUpstream, []string{"has no upstream branch", "no tracking information", "no upstream configured"}},
+	{KindNoUpstream, []string{
+		"has no upstream branch", "no tracking information", "no upstream configured", "has no upstream information",
+	}},
 	{KindDiverged, []string{
 		"not possible to fast-forward", "diverging branches can't be fast-forwarded",
 		"reconcile divergent branches",
@@ -208,12 +216,14 @@ var stderrKinds = []struct {
 	{KindUnbornBranch, []string{"does not have any commits yet", "you have nothing to amend"}},
 	{KindBranchExists, []string{"a branch named"}},
 	{KindBranchNotMerged, []string{"is not fully merged"}},
+	{KindBranchCheckedOut, []string{"cannot delete branch", "cannot delete the branch"}},
 	{KindInvalidName, []string{"is not a valid branch name", "is not a valid ref name"}},
 	{KindPathspecNoMatch, []string{"did not match any file"}},
 	{KindPathIgnored, []string{"ignored by one of your .gitignore files"}},
 	{KindRefNotFound, []string{
 		"invalid reference", "not a valid object name", "unknown revision", "bad revision",
 		"couldn't find remote ref", "' not found", "malformed object name",
+		"no branch named", "the requested upstream branch",
 	}},
 }
 

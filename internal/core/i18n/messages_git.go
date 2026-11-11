@@ -29,6 +29,8 @@ const (
 	MsgGitKindUnbornBranch        Key = "git.kind.unborn_branch"
 	MsgGitKindBranchExists        Key = "git.kind.branch_exists"
 	MsgGitKindBranchNotMerged     Key = "git.kind.branch_not_merged"
+	MsgGitKindBranchCheckedOut    Key = "git.kind.branch_checked_out"
+	MsgGitKindAmbiguousRef        Key = "git.kind.ambiguous_ref"
 	MsgGitKindInvalidName         Key = "git.kind.invalid_name"
 	MsgGitKindPathspecNoMatch     Key = "git.kind.pathspec_no_match"
 	MsgGitKindPathIgnored         Key = "git.kind.path_ignored"
@@ -149,6 +151,14 @@ var gitMessages = map[Key]message{
 	MsgGitKindBranchNotMerged: {
 		tr: "Bu branch'teki commit'ler başka hiçbir yere birleştirilmemiş; silersen kaybolurlar.",
 		en: "This branch has commits that are not merged anywhere; deleting it would lose them.",
+	},
+	MsgGitKindBranchCheckedOut: {
+		tr: "Üzerinde olduğun (ya da başka bir worktree'de açık olan) branch silinemez. Önce başka bir branch'e geç.",
+		en: "A branch that is checked out (here or in another worktree) cannot be deleted. Switch to another branch first.",
+	},
+	MsgGitKindAmbiguousRef: {
+		tr: "Bu ad birden fazla remote'ta var; hangisini kastettiğin belli değil. Remote adıyla birlikte yaz (ör. `origin/feat`).",
+		en: "This name exists on more than one remote, so it is ambiguous. Include the remote (e.g. `origin/feat`).",
 	},
 	MsgGitKindInvalidName: {
 		tr: "git bu adı kabul etmiyor. Boşluk, `..`, `~`, `^`, `:` ve `\\` kullanma.",
