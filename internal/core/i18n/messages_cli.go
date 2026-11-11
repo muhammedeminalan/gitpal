@@ -31,6 +31,7 @@ const (
 	MsgBackupCommit       Key = "cli.backup.commit"
 	MsgBackupWorktree     Key = "cli.backup.worktree" //nolint:gosec // G101: a message key, not a credential
 	MsgConfirmQuestion    Key = "cli.confirm.question"
+	MsgConfirmUseYes      Key = "cli.confirm.use_yes"
 	MsgConfirmExplicit    Key = "cli.confirm.explicit"
 	MsgConfirmTypeBranch  Key = "cli.confirm.type_branch"
 	MsgDryRunNothingDone  Key = "cli.dry_run.nothing_done"
@@ -215,6 +216,10 @@ var cliMessages = map[Key]message{
 	MsgEffectAborted:      {tr: "yarım kalan %s iptal edilecek; çakışma çözümlerin kaybolur", en: "the %s under way is given up, with your conflict resolutions"},
 	MsgBackupCommit:       {tr: "Yedek: %s commit'i saklanacak", en: "Backup: commit %s is kept"},
 	MsgBackupWorktree:     {tr: "Yedek: commit'lenmemiş değişikliklerin saklanacak", en: "Backup: your uncommitted changes are kept"},
+	MsgConfirmUseYes: {
+		tr: "Bu işlem onay istiyor ama soracak bir terminal yok. Onaylıyorsan komutu `--yes` ile çalıştır.",
+		en: "This operation asks for confirmation but there is no terminal to ask in. If you agree, run the command with `--yes`.",
+	},
 	MsgConfirmQuestion:    {tr: "Devam edilsin mi? [e/H] ", en: "Go ahead? [y/N] "},
 	MsgConfirmExplicit:    {tr: "Bu işlem tehlikeli. Devam etmek için \"evet\" yaz: ", en: "This is dangerous. Type \"yes\" to go ahead: "},
 	MsgConfirmTypeBranch:  {tr: "Onaylamak için branch adını yaz (%s): ", en: "Type the branch name to confirm (%s): "},

@@ -166,6 +166,12 @@ func (a *app) runOp(ctx context.Context, op safety.Operation) (safety.Result, er
 	if err == nil {
 		a.printBackups(res)
 	}
+	// One question --yes could have answered: say so, instead of the
+	// message meant for dangerous operations.
+	if errors.Is(err, safety.ErrConfirmationRequired) && assessment.Confirm == safety.ConfirmSimple {
+		fmt.Fprintf(a.env.Stderr, "%s\n", i18n.T(a.lang, i18n.MsgConfirmUseYes))
+		return res, &exitError{code: ExitBlocked, silent: true}
+	}
 	return res, err
 }
 

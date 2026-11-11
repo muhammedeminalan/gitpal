@@ -481,3 +481,23 @@ func TestHelpIsInTheUsersLanguage(t *testing.T) {
 	assert.Contains(t, h.stdout.String(), "Usage:")
 	assert.Contains(t, h.stdout.String(), "Commands:")
 }
+
+func TestWithoutATerminalASimpleConfirmationPointsToYes(t *testing.T) {
+	h := newHarness(t)
+	h.writeConfig("language: en\n")
+	repo := gittest.NewRepo(t)
+	h.cwd = repo.Dir
+	repo.WriteFile("a.txt", "a\n")
+	require.Equal(t, cli.ExitOK, h.run("add", "a.txt"))
+
+	// Committing straight to main asks one question; --yes answers it.
+	assert.Equal(t, cli.ExitBlocked, h.run("commit", "-m", "feat: a"))
+	assert.Contains(t, h.stderr.String(), "--yes")
+	assert.NotContains(t, h.stderr.String(), "does not cover")
+	require.Equal(t, cli.ExitOK, h.run("commit", "-m", "feat: a", "--yes"), h.stderr.String())
+
+	// A dangerous operation still says --yes is not enough.
+	repo.WriteFile("a.txt", "b\n")
+	assert.Equal(t, cli.ExitBlocked, h.run("discard", "a.txt", "--yes"))
+	assert.Contains(t, h.stderr.String(), "does not cover")
+}
