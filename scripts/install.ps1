@@ -38,7 +38,8 @@ try {
   Invoke-WebRequest -UseBasicParsing "$base/$archive" -OutFile (Join-Path $tmp $archive)
   Invoke-WebRequest -UseBasicParsing "$base/checksums.txt" -OutFile (Join-Path $tmp 'checksums.txt')
 
-  $line = Get-Content (Join-Path $tmp 'checksums.txt') | Where-Object { ($_ -split '\s+')[1] -eq $archive } | Select-Object -First 1
+  # "hash  dosya" ya da sha256sum -b biçimi "hash *dosya"
+  $line = Get-Content (Join-Path $tmp 'checksums.txt') | Where-Object { ($_ -split '\s+')[1].TrimStart('*') -eq $archive } | Select-Object -First 1
   if (-not $line) { throw "checksums.txt içinde $archive yok" }
   $want = ($line -split '\s+')[0].ToLower()
   $got = (Get-FileHash -Algorithm SHA256 (Join-Path $tmp $archive)).Hash.ToLower()

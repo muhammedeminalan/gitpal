@@ -684,6 +684,9 @@ README (kurulum, hızlı başlangıç, komutlar, güvenlik modeli, AI gizliliği
 rotasyonu, history.jsonl sınırı, yardım metinlerinin yerelleştirilmesi (A-037). Doğrulama: lint 0, race testleri,
 `internal/core` kapsamı %90, 5 platform derleme; goreleaser snapshot üretildi (arşiv, deb içeriği, `--version`
 kontrol edildi); install.sh yerelde doğru arşivle kurdu, bozuk arşivi reddetti.
+**İlk CI (`b6a04ba`):** macOS GUI derlemesi düzeldi; `install (windows)` düştü — Git Bash'in `sha256sum`'ı ikili
+dosyada adın önüne `*` koyuyor, betik bunu tanımıyordu. Betikler artık iki biçimi de kabul ediyor; CI'daki sahte sürüm
+goreleaser'ın biçimine çevrildi.
 **Doğrulanmayan:** gerçek bir tag ile sürüm iş akışı hiç koşmadı (ilk tag'de görülecek); install.ps1 yalnızca CI'da
 denenecek (bu ortamda PowerShell yok).
 

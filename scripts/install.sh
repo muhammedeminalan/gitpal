@@ -49,7 +49,8 @@ echo "gitpal $version ($os/$arch) indiriliyor…"
 curl -fsSL -o "$tmp/$archive" "$base/$archive" || fail "$archive indirilemedi"
 curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt" || fail "checksums.txt indirilemedi"
 
-want=$(awk -v f="$archive" '$2 == f { print $1 }' "$tmp/checksums.txt")
+# "hash  dosya" ya da sha256sum -b biçimi "hash *dosya"
+want=$(awk -v f="$archive" '{ n = $2; sub(/^\*/, "", n) } n == f { print $1 }' "$tmp/checksums.txt")
 [ -n "$want" ] || fail "checksums.txt içinde $archive yok"
 if command -v sha256sum >/dev/null 2>&1; then
   got=$(sha256sum "$tmp/$archive" | awk '{ print $1 }')
