@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/eminalan/gitpal/internal/core/config"
+	"github.com/muhammedeminalan/gitpal/internal/core/config"
 )
 
 func envWith(goos, home string, vars map[string]string) config.Env {

@@ -20,11 +20,11 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/eminalan/gitpal/internal/core/config"
-	"github.com/eminalan/gitpal/internal/core/git"
-	"github.com/eminalan/gitpal/internal/core/i18n"
-	"github.com/eminalan/gitpal/internal/core/logging"
-	"github.com/eminalan/gitpal/internal/core/secrets"
+	"github.com/muhammedeminalan/gitpal/internal/core/config"
+	"github.com/muhammedeminalan/gitpal/internal/core/git"
+	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
+	"github.com/muhammedeminalan/gitpal/internal/core/logging"
+	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
 )
 
 // Exit codes (spec §8).

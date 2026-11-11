@@ -5,7 +5,7 @@ package secretstest
 import (
 	"sync"
 
-	"github.com/eminalan/gitpal/internal/core/secrets"
+	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
 )
 
 // Memory is a secrets.Store that keeps secrets in a map.

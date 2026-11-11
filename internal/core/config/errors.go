@@ -3,7 +3,7 @@ package config
 import (
 	"strings"
 
-	"github.com/eminalan/gitpal/internal/core/i18n"
+	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
 )
 
 // ValidationError reports a setting whose value gitpal cannot work with.

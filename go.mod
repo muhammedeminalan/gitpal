@@ -1,4 +1,4 @@
-module github.com/eminalan/gitpal
+module github.com/muhammedeminalan/gitpal
 
 go 1.26.0
 

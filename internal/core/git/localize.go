@@ -3,7 +3,7 @@ package git
 import (
 	"strings"
 
-	"github.com/eminalan/gitpal/internal/core/i18n"
+	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
 )
 
 // kindMessages explains each kind to the user (spec §11: git's errors are

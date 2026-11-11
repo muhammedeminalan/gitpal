@@ -3,8 +3,8 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/eminalan/gitpal/internal/core/i18n"
-	"github.com/eminalan/gitpal/internal/version"
+	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
+	"github.com/muhammedeminalan/gitpal/internal/version"
 )
 
 func (a *app) newRootCmd() *cobra.Command {

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/eminalan/gitpal/internal/core/git"
+	"github.com/muhammedeminalan/gitpal/internal/core/git"
 )
 
 // The identity every test commit is made with.

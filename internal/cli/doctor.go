@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/eminalan/gitpal/internal/core/doctor"
-	"github.com/eminalan/gitpal/internal/core/i18n"
+	"github.com/muhammedeminalan/gitpal/internal/core/doctor"
+	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
 )
 
 // doctorOutput is the shape of `gitpal doctor --json`.

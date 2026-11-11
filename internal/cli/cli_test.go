@@ -17,11 +17,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/eminalan/gitpal/internal/cli"
-	"github.com/eminalan/gitpal/internal/core/git"
-	"github.com/eminalan/gitpal/internal/core/git/gittest"
-	"github.com/eminalan/gitpal/internal/core/secrets"
-	"github.com/eminalan/gitpal/internal/core/secrets/secretstest"
+	"github.com/muhammedeminalan/gitpal/internal/cli"
+	"github.com/muhammedeminalan/gitpal/internal/core/git"
+	"github.com/muhammedeminalan/gitpal/internal/core/git/gittest"
+	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
+	"github.com/muhammedeminalan/gitpal/internal/core/secrets/secretstest"
 )
 
 // harness runs the CLI the way main does, but against a throw-away home

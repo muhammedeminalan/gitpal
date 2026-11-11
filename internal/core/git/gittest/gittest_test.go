@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/eminalan/gitpal/internal/core/git"
-	"github.com/eminalan/gitpal/internal/core/git/gittest"
+	"github.com/muhammedeminalan/gitpal/internal/core/git"
+	"github.com/muhammedeminalan/gitpal/internal/core/git/gittest"
 )
 
 // Spec §17: tests must never read or touch the developer's real git

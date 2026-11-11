@@ -75,14 +75,10 @@ Kullanıcı repoyu kendi komutuyla açtı ve push etti: <https://github.com/muha
 
 ## Mimari kararlar
 
-### A-001 — Modül yolu `github.com/eminalan/gitpal` (2026-11-10)
-**Varsayım.** Global git config'teki GitHub noreply adresinden kullanıcı adı `eminalan` çıkarıldı.
-Yanlışsa: `go mod edit -module <yeni>` + import yollarında toplu değiştirme + Makefile `MODULE` + `.golangci.yml`.
-
-**Güncelleme (2026-11-11): varsayım yanlış çıktı, düzeltme bekliyor.** Repo `github.com/muhammedeminalan/gitpal` adresinde
-açıldı (S-009); GitHub kullanıcı adı `muhammedeminalan`, `eminalan` değil. Kod hâlâ `github.com/eminalan/gitpal` yolunu
-kullanıyor. Derlemeyi ve testleri bozmaz (yol yalnızca bir addır), ama `go install github.com/muhammedeminalan/gitpal/cmd/gitpal@latest`
-çalışmaz ve M8'deki dağıtım yanlış adresi gösterir. Yukarıdaki dört adımla düzeltilmeli; M1'e dönüldüğünde ilk iş.
+### A-001 — Modül yolu `github.com/muhammedeminalan/gitpal` (2026-11-10, düzeltme 2026-11-11)
+İlk varsayım `github.com/eminalan/gitpal` idi (global git config'teki noreply adresinden çıkarılmıştı) ve yanlış çıktı:
+repo `github.com/muhammedeminalan/gitpal` adresinde açıldı (S-009). 2026-11-11'de düzeltildi: `go.mod`, tüm import yolları,
+Makefile `MODULE` ve `.golangci.yml` `local-prefixes` yeni yolu kullanıyor. Yanlış yol hiçbir sürümde yayımlanmadı.
 
 ### A-002 — golangci-lint v2, Homebrew ile (2026-11-10)
 Spec'teki `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest` yolu eski v1 modülüdür
@@ -260,7 +256,6 @@ gereken git ayarları ve yazılması gereken testler `docs/M1_PLAN.md` içinde. 
 | Log rotasyonu | M8 |
 | Cobra sabit metinlerinin çevirisi | M8 |
 | Windows'ta 4 CLI testi başarısız (ilk CI koşusu) | M1'e dönüldüğünde; ayrıntı "Milestone durumu → M0" |
-| Modül yolu `eminalan` → `muhammedeminalan` | M1'e dönüldüğünde ilk iş (A-001 güncellemesi) |
 | `.goreleaser.yaml`, `gp` kısa adı | M8 |
 | `init`, `clone` (ilerleme göstergeli), `log --graph` çizimi | M3 (A-020) |
 | GUI'de SSH parola / host anahtarı istemi | M7 (A-020) |

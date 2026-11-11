@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/eminalan/gitpal/internal/core/config"
-	"github.com/eminalan/gitpal/internal/core/doctor"
-	"github.com/eminalan/gitpal/internal/core/git"
-	"github.com/eminalan/gitpal/internal/core/i18n"
-	"github.com/eminalan/gitpal/internal/core/secrets"
-	"github.com/eminalan/gitpal/internal/core/secrets/secretstest"
+	"github.com/muhammedeminalan/gitpal/internal/core/config"
+	"github.com/muhammedeminalan/gitpal/internal/core/doctor"
+	"github.com/muhammedeminalan/gitpal/internal/core/git"
+	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
+	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
+	"github.com/muhammedeminalan/gitpal/internal/core/secrets/secretstest"
 )
 
 const (

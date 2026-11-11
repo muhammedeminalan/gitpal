@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/eminalan/gitpal/internal/core/git"
-	"github.com/eminalan/gitpal/internal/core/git/gittest"
+	"github.com/muhammedeminalan/gitpal/internal/core/git"
+	"github.com/muhammedeminalan/gitpal/internal/core/git/gittest"
 )
 
 // These tests run the real git binary, always against throw-away repositories

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zalando/go-keyring"
 
-	"github.com/eminalan/gitpal/internal/core/secrets"
-	"github.com/eminalan/gitpal/internal/core/secrets/secretstest"
+	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
+	"github.com/muhammedeminalan/gitpal/internal/core/secrets/secretstest"
 )
 
 // keyring.MockInit swaps go-keyring's backend for an in-memory one, so these

@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/eminalan/gitpal/internal/core/i18n"
+	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
 )
 
 // RepoFileName is the per-repository override file, read from the repository root.

@@ -12,10 +12,10 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/eminalan/gitpal/internal/core/config"
-	"github.com/eminalan/gitpal/internal/core/git"
-	"github.com/eminalan/gitpal/internal/core/i18n"
-	"github.com/eminalan/gitpal/internal/core/secrets"
+	"github.com/muhammedeminalan/gitpal/internal/core/config"
+	"github.com/muhammedeminalan/gitpal/internal/core/git"
+	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
+	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
 )
 
 // Status is the outcome of one check.

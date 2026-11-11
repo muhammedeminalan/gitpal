@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/eminalan/gitpal/internal/cli"
+	"github.com/muhammedeminalan/gitpal/internal/cli"
 )
 
 func main() {

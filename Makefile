@@ -2,7 +2,7 @@
 
 GO        ?= go
 GOLANGCI  ?= golangci-lint
-MODULE    := github.com/eminalan/gitpal
+MODULE    := github.com/muhammedeminalan/gitpal
 VERSION   ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 DATE      ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)

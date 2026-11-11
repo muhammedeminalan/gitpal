@@ -60,7 +60,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/eminalan/gitpal
+        - github.com/muhammedeminalan/gitpal
   exclusions:
     generated: lax
 
