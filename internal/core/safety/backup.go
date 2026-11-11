@@ -86,7 +86,7 @@ func (g *Guard) Backups(ctx context.Context) ([]Backup, error) {
 			if !ok {
 				continue
 			}
-			when, err := time.Parse(strings.Replace(backupTimeLayout, ".", "", 1), stamp)
+			when, err := parseBackupTime(stamp)
 			if err != nil {
 				continue // not a name gitpal wrote
 			}
@@ -185,4 +185,15 @@ func (g *Guard) record(ctx context.Context, op, target string, runErr error) (Re
 		return Result{Entry: written}, runErr
 	}
 	return Result{Entry: written}, histErr
+}
+
+// parseBackupTime reads the time in a backup's name. The name drops the "."
+// before the milliseconds, and Go only reads fractional seconds after one,
+// so it is put back first.
+func parseBackupTime(stamp string) (time.Time, error) {
+	const dateTime = len("20060102T150405")
+	if len(stamp) <= dateTime {
+		return time.Time{}, fmt.Errorf("safety: malformed backup time")
+	}
+	return time.Parse(backupTimeLayout, stamp[:dateTime]+"."+stamp[dateTime:])
 }

@@ -817,3 +817,16 @@ func TestSummaryPutsAnAssessmentIntoWords(t *testing.T) {
 		}
 	}
 }
+
+// A backup taken at any instant must be listed again — milliseconds included.
+func TestBackupsTakenAtAnyMillisecondAreListed(t *testing.T) {
+	f := newFixture(t)
+	f.clock.now = time.Date(2026, 11, 11, 9, 30, 12, 345_000_000, time.UTC)
+	f.repo.WriteFile("a.txt", "work\n")
+	f.mustDo(safety.Discard("a.txt"), yes)
+
+	backups, err := f.guard.Backups(context.Background())
+	require.NoError(t, err)
+	require.Len(t, backups, 1)
+	assert.Equal(t, time.Date(2026, 11, 11, 9, 31, 12, 345_000_000, time.UTC), backups[0].Time)
+}
