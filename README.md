@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/logo/gitpal-logo.svg" alt="gitpal logosu" width="112">
+
 # gitpal
 
 **Git'in günlük akışını tek yerden, güvenli ve hızlı yürüt.**

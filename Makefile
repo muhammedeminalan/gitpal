@@ -59,6 +59,13 @@ gui: frontend ## bin/gitpal-gui üret (masaüstü arayüzü)
 dmg: gui ## macOS: gitpal.app içeren .dmg üret (dist/)
 	sh scripts/package-macos.sh bin/gitpal-gui '$(DMG_VERSION)' '$(DMG)'
 
+.PHONY: icons
+icons: ## Logodan uygulama ikonlarını yeniden üret (docs/logo/*.png değişince)
+	python3 -I scripts/make-icns.py docs/logo build/darwin/gitpal.icns
+	$(GO) run github.com/tc-hib/go-winres@v0.3.3 make --in build/windows/winres.json --out cmd/gitpal-gui/rsrc --arch amd64,arm64
+	$(GO) run github.com/tc-hib/go-winres@v0.3.3 make --in build/windows/winres.json --out cmd/gitpal/rsrc --arch amd64,arm64
+	cp docs/logo/gitpal-logo.svg docs/logo/gitpal-256.png frontend/public/
+
 .PHONY: install
 install: ## gitpal'ı GOPATH/bin altına kur
 	$(GO) install -trimpath -ldflags '$(LDFLAGS)' ./cmd/gitpal

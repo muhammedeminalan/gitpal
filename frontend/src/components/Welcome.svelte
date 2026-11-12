@@ -18,7 +18,10 @@
 
 <div class="h-full grid place-items-center p-6">
   <div class="w-full max-w-xl space-y-6">
-    <h1 class="text-2xl font-semibold">{t('welcome.title')}</h1>
+    <div class="flex items-center gap-4">
+      <img src="/gitpal-logo.svg" alt="gitpal" class="w-16 h-16" />
+      <h1 class="text-2xl font-semibold">{t('welcome.title')}</h1>
+    </div>
     <section class="space-y-2">
       <div class="panel-title px-0">{t('welcome.recent')}</div>
       {#if recent.length === 0}<p class="text-zinc-500">{t('welcome.none')}</p>{/if}

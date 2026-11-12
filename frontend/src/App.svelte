@@ -74,7 +74,7 @@
 {:else}
   <div class="h-full flex flex-col">
     <header class="flex items-center gap-3 px-3 py-2 border-b border-zinc-200 dark:border-zinc-700">
-      <span class="font-semibold">gitpal</span>
+      <span class="flex items-center gap-2 font-semibold"><img src="/gitpal-logo.svg" alt="" class="w-6 h-6" />gitpal</span>
       <span class="mono text-zinc-500 truncate" title={app.root}>{app.root.split(/[\\/]/).pop()}</span>
       {#if branch}
         <span class="mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">

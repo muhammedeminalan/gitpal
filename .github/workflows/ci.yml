@@ -120,6 +120,8 @@ jobs:
           mkdir -p "$mnt"
           hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt" >/dev/null
           test -x "$mnt/gitpal.app/Contents/MacOS/gitpal-gui"
+          test -s "$mnt/gitpal.app/Contents/Resources/gitpal.icns"
+          test "$(plutil -extract CFBundleIconFile raw "$mnt/gitpal.app/Contents/Info.plist")" = gitpal
           test -L "$mnt/Applications"
           codesign --verify --deep --strict "$mnt/gitpal.app"
           hdiutil detach "$mnt" >/dev/null

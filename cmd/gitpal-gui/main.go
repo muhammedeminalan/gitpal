@@ -13,6 +13,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/muhammedeminalan/gitpal/frontend"
@@ -61,6 +62,18 @@ func run() error {
 		MinHeight:   560,
 		AssetServer: &assetserver.Options{Assets: assets},
 		OnStartup:   app.Startup,
-		Bind:        []any{app},
+		// macOS ikonu .app paketinden, Windows ikonu .exe'ye gömülü kaynaktan gelir;
+		// Linux'ta pencereye verilmesi gerekir. Vite, frontend/public'i dist'e kopyalar.
+		Linux: &linux.Options{Icon: linuxIcon()},
+		Bind:  []any{app},
 	})
+}
+
+// linuxIcon, gömülü arayüzdeki logoyu döndürür; bulunamazsa pencere ikonsuz açılır.
+func linuxIcon() []byte {
+	icon, err := fs.ReadFile(frontend.Dist, "dist/gitpal-256.png")
+	if err != nil {
+		return nil
+	}
+	return icon
 }

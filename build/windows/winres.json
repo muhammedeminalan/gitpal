@@ -1,0 +1,14 @@
+{
+  "RT_GROUP_ICON": {
+    "#3": {
+      "0000": [
+        "../../docs/logo/gitpal-256.png",
+        "../../docs/logo/gitpal-128.png",
+        "../../docs/logo/gitpal-64.png",
+        "../../docs/logo/gitpal-48.png",
+        "../../docs/logo/gitpal-32.png",
+        "../../docs/logo/gitpal-16.png"
+      ]
+    }
+  }
+}

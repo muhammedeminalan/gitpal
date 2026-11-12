@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>gitpal</title>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1e293b"/><stop offset="1" stop-color="#020617"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <!-- Koyu zeminde kaybolmasın diye ince açık kenar -->
+  <rect x="5" y="5" width="502" height="502" rx="107" fill="none" stroke="#475569" stroke-opacity=".7" stroke-width="10"/>
+  <circle cx="190" cy="196" r="32" fill="#e2e8f0"/><circle cx="322" cy="196" r="32" fill="#e2e8f0"/>
+  <path d="M136 300 C170 372 214 396 256 396 C298 396 342 372 376 300" fill="none" stroke="#e2e8f0" stroke-width="26" stroke-linecap="round"/>
+  <circle cx="136" cy="300" r="26" fill="#e2e8f0"/><circle cx="376" cy="300" r="26" fill="#e2e8f0"/>
+  <circle cx="256" cy="396" r="30" fill="#34d399" stroke="#e2e8f0" stroke-width="12"/>
+</svg>

@@ -630,6 +630,23 @@ Kullanıcı sürüm sayfasında `.exe` ve `.dmg` istedi. O ana kadar sürüm iş
 **v1.0.0 tag'i:** ilk olarak `702c810`'a kondu; sürüm iş akışı sürüm oluşmadan iptal edildi (indirilebilir hiçbir şey
 yayımlanmadı) ve tag bu değişiklikleri içeren commit'e taşındı.
 
+### A-040 — Logo ve uygulama ikonları (2026-11-12)
+- Logo "Gülen dal": iki göz + üç commit'li dal çizgisinden gülümseme ("pal" = dost + git). Renk kullanıcı seçimi
+  (gece mavisi + nane yeşili); koyu zeminde kaybolmasın diye ince açık kenar eklendi. Kaynak `docs/logo/gitpal-logo.svg`.
+- İkonlar derleme sırasında değil, `make icons` ile üretilip repoya konur: derleme makinesinde (CI, goreleaser)
+  Python ya da ek araç gerekmesin. `cmd/gitpal-gui/icons_test.go` dosyaların varlığını, `.icns`'teki her boyutu ve
+  PNG'lerin gerçekten çizili olduğunu denetler (ilk dışa aktarımda boyutu doğru ama içi saydam PNG çıkmıştı).
+- macOS: `build/darwin/gitpal.icns` (iconutil'siz, `scripts/make-icns.py` elle yazar) `.app`'e konur,
+  `CFBundleIconFile`; CI dmg'yi açıp ikonu ve plist anahtarını doğruluyor.
+- Windows: go-winres ile `rsrc_windows_{amd64,arm64}.syso` (`cmd/gitpal` ve `cmd/gitpal-gui`); `go build`
+  kendiliğinden bağlar, cgo gerekmez. İkon grubu kimliği **3**: Wails pencere ikonunu bu kimlikle yükler
+  (`winc.AppIconID`). Manifest eklenmedi (davranış değişmesin diye).
+- Linux: pencere ikonu `options.Linux.Icon` ile gömülü arayüzdeki `gitpal-256.png`'den. `.desktop` dosyası yok
+  (Linux GUI tek dosya olarak dağıtılıyor).
+- **Doğrulanmayan:** macOS dock ve Windows görev çubuğunda ikon gözle görülmedi (bu ortamda ikisi de yok);
+  `.exe`'de kaynak `go-winres extract` ile, `.icns` Pillow ile okundu. Linux GUI Xvfb'de açıldı, logo üst çubukta
+  ve karşılama ekranında görünüyor.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
