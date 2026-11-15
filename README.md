@@ -132,8 +132,22 @@ Gereksinim: bilgisayarda **git 2.30+** kurulu olmalı.
 | Sistem | Dosya | Kurulum |
 |---|---|---|
 | macOS (Apple Silicon) | `gitpal_<sürüm>_macos_arm64.dmg` | Aç, `gitpal`'ı Applications'a sürükle |
-| Windows (64 bit) | `gitpal-gui_windows_amd64.exe` | Çift tıkla (kurulum yok). WebView2 gerekir; Windows 11'de hazır gelir |
-| Linux (64 bit) | `gitpal-gui_linux_amd64` | `chmod +x` ve çalıştır (`libgtk-3`, `libwebkit2gtk-4.1` gerekir) |
+| Windows (64 bit) | `gitpal-gui_<sürüm>_windows_amd64.zip` | Bir klasöre çıkar, `gitpal-gui.exe`'yi çalıştır. WebView2 gerekir; Windows 11'de hazır gelir |
+| Linux (64 bit) | `gitpal-gui_<sürüm>_linux_amd64.tar.gz` | Bir klasöre çıkar, `gitpal-gui`'yi çalıştır (`libgtk-3`, `libwebkit2gtk-4.1` gerekir) |
+
+**Terminal komutları kendiliğinden kurulur.** Masaüstü paketi `gitpal` komut satırı aracını da taşır; uygulama ilk
+açılışta `gitpal` ve kısa adı `gp`'yi terminale ekler ve bunu bir kez bildirir:
+
+- macOS / Linux: `~/.local/bin/gitpal` ve `gp`, uygulamanın içindeki `gitpal`'a bağlanır (uygulama güncellenince
+  komutlar da güncellenir). `~/.local/bin` PATH'te değilse `~/.zprofile` (Linux'ta `~/.profile`) dosyasına tek satır
+  eklenir.
+- Windows: uygulamanın klasörü kullanıcı PATH'ine eklenir, `gp.cmd` oluşturulur. Yönetici izni gerekmez.
+- Komutları başka yoldan (aşağıdaki betik, paket yöneticisi) kurduysan onlara dokunulmaz.
+
+**Güncellemeler.** Uygulama açılışta yeni sürüm olup olmadığına bakar (GitHub'a anonim bir istek; seninle ilgili
+hiçbir bilgi gönderilmez). Varsa üstte bir şerit çıkar; **Güncelle** paketi indirir, yayımlanan sağlama toplamıyla
+doğrular ve açar (macOS'ta `.dmg` penceresi, Windows'ta zip'in klasörü). Yeni sürümü eskisinin yerine koyman yeterli.
+Denetimi kapatmak için: `gitpal config set updates.check false`.
 
 > [!NOTE]
 > Dosyalar **imzalı değil** (Apple / Microsoft geliştirici imzası yok), bu yüzden ilk açılışta sistem uyarır.

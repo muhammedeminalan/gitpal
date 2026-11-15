@@ -59,6 +59,10 @@ gui: frontend ## bin/gitpal-gui üret (masaüstü arayüzü)
 dmg: build gui ## macOS: gitpal.app içeren .dmg üret (dist/)
 	sh scripts/package-macos.sh bin/gitpal-gui bin/gitpal '$(DMG_VERSION)' '$(DMG)'
 
+.PHONY: package
+package: build gui ## Bu sistem için masaüstü paketi (gitpal dahil) + .sha256 üret (dist-gui/)
+	sh scripts/package-gui.sh bin/gitpal-gui bin/gitpal '$(VERSION)' dist-gui
+
 .PHONY: icons
 icons: ## Logodan uygulama ikonlarını yeniden üret (docs/logo/*.png değişince)
 	python3 -I scripts/make-icns.py docs/logo build/darwin/gitpal.icns
@@ -114,4 +118,4 @@ check: lint test-race cover cross ## Commit öncesi tam kontrol
 
 .PHONY: clean
 clean: ## Derleme çıktılarını sil
-	rm -rf bin dist coverage.out frontend/dist
+	rm -rf bin dist dist-gui coverage.out frontend/dist

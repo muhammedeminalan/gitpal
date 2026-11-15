@@ -10,7 +10,9 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	goruntime "runtime"
+	"time"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -19,12 +21,15 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/muhammedeminalan/gitpal/frontend"
+	"github.com/muhammedeminalan/gitpal/internal/cmdinstall"
 	"github.com/muhammedeminalan/gitpal/internal/core/ai"
 	"github.com/muhammedeminalan/gitpal/internal/core/config"
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
 	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
 	"github.com/muhammedeminalan/gitpal/internal/gui"
 	"github.com/muhammedeminalan/gitpal/internal/terminal"
+	"github.com/muhammedeminalan/gitpal/internal/update"
+	"github.com/muhammedeminalan/gitpal/internal/version"
 )
 
 func main() {
@@ -53,6 +58,19 @@ func run() error {
 			return runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{CanCreateDirectories: true})
 		},
 		OpenTerminal: openTerminal,
+		CurrentVersion: func() string {
+			// Güncelleme şeridini denemek için: GITPAL_UPDATE_CURRENT=1.0.0 gitpal-gui
+			if v := os.Getenv("GITPAL_UPDATE_CURRENT"); v != "" {
+				return v
+			}
+			return version.Version
+		},
+		DownloadDir: func() string {
+			home, _ := os.UserHomeDir()
+			return update.DownloadsDir(home)
+		},
+		OpenDownload:   func(path string) error { return update.Open(goruntime.GOOS, path) },
+		EnsureCommands: ensureCommands,
 	})
 	// A path on the command line opens that repository straight away.
 	if len(os.Args) > 1 {
@@ -94,5 +112,42 @@ func openTerminal(dir, hint string) error {
 	return terminal.Open(terminal.Options{
 		GOOS: goruntime.GOOS, Dir: dir, Gitpal: gitpal, Hint: hint,
 		LookPath: exec.LookPath, Getenv: os.Getenv, Environ: os.Environ(),
+	})
+}
+
+// ensureCommands, terminal komutlarını (gitpal, gp) kurar; paket gitpal'ı
+// taşımıyorsa ve bu bir sürüm derlemesiyse aynı sürümün komut aracını indirir.
+func ensureCommands() (cmdinstall.Result, error) {
+	self, err := os.Executable()
+	if err != nil {
+		return cmdinstall.Result{}, err
+	}
+	if resolved, err := filepath.EvalSymlinks(self); err == nil {
+		self = resolved
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return cmdinstall.Result{}, err
+	}
+	var fetch func(string) (string, error)
+	if tag, ok := update.ReleaseTag(version.Version); ok {
+		fetch = func(dest string) (string, error) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			c := update.Client{}
+			rel, err := c.ByTag(ctx, tag)
+			if err != nil {
+				return "", err
+			}
+			return c.FetchCLI(ctx, rel, goruntime.GOOS, goruntime.GOARCH, dest)
+		}
+	}
+	programs := ""
+	if local := os.Getenv("LOCALAPPDATA"); local != "" {
+		programs = filepath.Join(local, "Programs", "gitpal")
+	}
+	return cmdinstall.Ensure(cmdinstall.Options{
+		GOOS: goruntime.GOOS, Home: home, Self: self, Fetch: fetch,
+		UserPath: cmdinstall.UserPath(), ProgramsDir: programs,
 	})
 }

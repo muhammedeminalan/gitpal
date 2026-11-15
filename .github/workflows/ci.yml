@@ -109,14 +109,27 @@ jobs:
           CGO_ENABLED: "1"
           CGO_LDFLAGS: ${{ matrix.ldflags }}
         run: go build -tags '${{ matrix.tags }}' -ldflags '${{ matrix.linkflags }}' -o gitpal-gui-bin ./cmd/gitpal-gui
-      - name: macOS paketi (.dmg) üretilebiliyor mu
+      - name: Masaüstü paketi üretilebiliyor mu (sürüm akışıyla aynı betik)
+        shell: bash
+        run: |
+          set -eu
+          exe=""; [ "$RUNNER_OS" = Windows ] && exe=.exe
+          cp gitpal-gui-bin "gitpal-gui$exe"
+          CGO_ENABLED=0 go build -o "gitpal-cli$exe" ./cmd/gitpal
+          sh scripts/package-gui.sh "gitpal-gui$exe" "gitpal-cli$exe" 0.0.0 "$RUNNER_TEMP/pkg"
+          ls -la "$RUNNER_TEMP/pkg"
+          cd "$RUNNER_TEMP/pkg"
+          if command -v sha256sum >/dev/null; then sha256sum -c ./*.sha256; else shasum -a 256 -c ./*.sha256; fi
+          case "$RUNNER_OS" in
+            Linux) tar tzf gitpal-gui_0.0.0_linux_amd64.tar.gz | sort | tr '\n' ' ' | grep -q 'gitpal gitpal-gui' ;;
+            Windows) powershell.exe -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::OpenRead('gitpal-gui_0.0.0_windows_amd64.zip').Entries.Name" | tr -d '\r' | LC_ALL=C sort | tr '\n' ' ' | grep -q 'gitpal-gui.exe gitpal.exe' ;;
+          esac
+      - name: macOS paketi (.dmg) içeriği
         if: runner.os == 'macOS'
         shell: bash
         run: |
           set -eu
-          dmg="$RUNNER_TEMP/gitpal_ci.dmg"
-          CGO_ENABLED=0 go build -o gitpal-cli-bin ./cmd/gitpal
-          sh scripts/package-macos.sh gitpal-gui-bin gitpal-cli-bin 0.0.0 "$dmg"
+          dmg="$RUNNER_TEMP/pkg/gitpal_0.0.0_macos_arm64.dmg"
           mnt="$RUNNER_TEMP/gitpal-dmg"
           mkdir -p "$mnt"
           hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt" >/dev/null

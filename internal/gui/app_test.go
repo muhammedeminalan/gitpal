@@ -2,6 +2,11 @@ package gui
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -9,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/muhammedeminalan/gitpal/internal/cmdinstall"
 	"github.com/muhammedeminalan/gitpal/internal/core/ai"
 	"github.com/muhammedeminalan/gitpal/internal/core/config"
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
@@ -16,6 +22,7 @@ import (
 	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
 	"github.com/muhammedeminalan/gitpal/internal/core/secrets/secretstest"
 	"github.com/muhammedeminalan/gitpal/internal/terminal"
+	"github.com/muhammedeminalan/gitpal/internal/update"
 )
 
 type stubAI struct{ in ai.CommitInput }
@@ -319,4 +326,107 @@ func TestSwitchSaysWhereYouAre(t *testing.T) {
 	out, err := app.Do(OpRequest{Kind: "switch", Branch: "main"}, Answer{Approved: true})
 	require.NoError(t, err)
 	assert.Equal(t, "Şu an main branch'indesin.", out.Message)
+}
+
+// fakeReleases, sahte bir GitHub sürüm listesi: v9.9.9, macOS paketi ve sağlaması.
+func fakeReleases(t *testing.T, hits *int) *httptest.Server {
+	t.Helper()
+	dmg := []byte("yeni sürüm")
+	sum := sha256.Sum256(dmg)
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*hits++
+		switch r.URL.Path {
+		case "/releases/latest":
+			fmt.Fprintf(w, `{"tag_name":"v9.9.9","html_url":"https://example.com/v9.9.9","body":"Yenilikler","assets":[
+				{"name":"gitpal_9.9.9_macos_arm64.dmg","browser_download_url":"%[1]s/dl/a.dmg"},
+				{"name":"gitpal_9.9.9_macos_arm64.dmg.sha256","browser_download_url":"%[1]s/dl/a.sha"}]}`, srv.URL)
+		case "/dl/a.dmg":
+			_, _ = w.Write(dmg)
+		case "/dl/a.sha":
+			fmt.Fprintf(w, "%s  gitpal_9.9.9_macos_arm64.dmg\n", hex.EncodeToString(sum[:]))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestUpdateIsAnnouncedAndDownloaded(t *testing.T) {
+	app, _, _ := newApp(t, "language=tr")
+	hits := 0
+	srv := fakeReleases(t, &hits)
+	downloads := t.TempDir()
+	var opened string
+	app.deps.Updates = &update.Client{API: srv.URL, HTTP: srv.Client()}
+	app.deps.CurrentVersion = func() string { return "1.0.1" }
+	app.deps.GOOS, app.deps.GOARCH = "darwin", "arm64"
+	app.deps.DownloadDir = func() string { return downloads }
+	app.deps.OpenDownload = func(p string) error { opened = p; return nil }
+
+	info, err := app.CheckUpdate()
+	require.NoError(t, err)
+	assert.True(t, info.Enabled)
+	assert.True(t, info.Available)
+	assert.Equal(t, "1.0.1", info.Current)
+	assert.Equal(t, "9.9.9", info.Latest)
+	assert.Equal(t, "Yenilikler", info.Notes)
+	assert.Equal(t, "https://example.com/v9.9.9", info.Page)
+	assert.True(t, info.HasPackage)
+
+	got, err := app.DownloadUpdate()
+	require.NoError(t, err)
+	assert.Equal(t, filepath.Join(downloads, "gitpal_9.9.9_macos_arm64.dmg"), got.Path)
+	assert.Equal(t, got.Path, opened, "indirilen paket kullanıcıya açılır")
+	assert.Contains(t, got.Hint, "Uygulamalar")
+
+	// Geliştirme sürümü kıyaslanamaz: uyarı çıkmaz ama son sürüm bilinir.
+	app.deps.CurrentVersion = func() string { return "dev" }
+	info, err = app.CheckUpdate()
+	require.NoError(t, err)
+	assert.False(t, info.Available)
+	assert.False(t, info.Known)
+	assert.Equal(t, "9.9.9", info.Latest)
+
+	// Intel Mac için paket yok: sürüm sayfası önerilir.
+	app.deps.CurrentVersion = func() string { return "1.0.1" }
+	app.deps.GOARCH = "amd64"
+	info, err = app.CheckUpdate()
+	require.NoError(t, err)
+	assert.False(t, info.HasPackage)
+	_, err = app.DownloadUpdate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "https://example.com/v9.9.9")
+}
+
+func TestUpdateCheckCanBeTurnedOff(t *testing.T) {
+	app, _, _ := newApp(t, "language=tr;updates.check=false")
+	hits := 0
+	srv := fakeReleases(t, &hits)
+	app.deps.Updates = &update.Client{API: srv.URL, HTTP: srv.Client()}
+	info, err := app.CheckUpdate()
+	require.NoError(t, err)
+	assert.False(t, info.Enabled)
+	assert.Zero(t, hits, "kapalıyken internete hiç çıkılmaz")
+}
+
+func TestCommandsAreInstalledOnStart(t *testing.T) {
+	app, _, _ := newApp(t, "language=tr")
+	app.deps.EnsureCommands = func() (cmdinstall.Result, error) {
+		return cmdinstall.Result{Changed: true, Dir: "/Users/a/.local/bin", Profile: "/Users/a/.zprofile"}, nil
+	}
+	res := app.EnsureCommands()
+	assert.True(t, res.Changed)
+	assert.Contains(t, res.Message, "gitpal")
+	assert.Contains(t, res.Message, "/Users/a/.local/bin")
+	assert.Contains(t, res.Message, "yeni", "yeni açılan terminal pencerelerinde çalıştığı söylenir")
+
+	app.deps.EnsureCommands = func() (cmdinstall.Result, error) { return cmdinstall.Result{Dir: "/x"}, nil }
+	res = app.EnsureCommands()
+	assert.False(t, res.Changed)
+	assert.Empty(t, res.Message, "değişiklik yoksa sessiz")
+
+	app.deps.EnsureCommands = nil
+	assert.False(t, app.EnsureCommands().Changed)
 }

@@ -675,6 +675,42 @@ yayımlanmadı) ve tag bu değişiklikleri içeren commit'e taşındı.
   terminal programıyla uçtan uca, diğerleri plan testleriyle sınandı. Masaüstü akışı (menü, yeni branch, geçiş,
   Yardım) gerçek Go tarafına bağlı arayüzde tıklanarak denendi.
 
+### A-042 — Terminal komutlarının otomatik kurulumu ve güncelleme denetimi (2026-11-15)
+Kullanıcı "karar gereken yerde kendin karar ver, sonda raporla" dedi; alınan kararlar:
+- **Komutlar (`internal/cmdinstall`) her açılışta, sessizce, idempotent kurulur;** yalnızca bir şey değiştiğinde bir kez
+  bildirilir. Hata kullanıcıya gösterilmez (uygulama komutlar olmadan da çalışır; Terminal düğmesi gitpal'ı kendi bulur).
+  - macOS/Linux: `~/.local/bin/{gitpal,gp}` paketin içindeki gitpal'a **sembolik bağ** (kopya değil: uygulama
+    güncellenince komut da güncellenir). Yönetici izni gerektiren `/usr/local/bin` bilerek kullanılmadı.
+  - PATH: kullanıcının kabuk dosyalarından hiçbiri `.local/bin` geçirmiyorsa `~/.zprofile` (Linux `~/.profile`)
+    dosyasına işaretli tek satır eklenir; `~/.bash_profile` / `~/.bashrc` zaten varsa onlara da. Kullanıcı dosyasına
+    yazmak müdahaleci ama tek ve geri alınabilir bir satır; README'de yazılı.
+  - Windows: paket klasörü kullanıcı PATH'ine (HKCU\Environment, REG_EXPAND_SZ) eklenir, `WM_SETTINGCHANGE` yayınlanır,
+    `gp.cmd` yazılır. Yönetici izni yok.
+  - Kullanıcının başka yoldan kurduğu gitpal (normal dosya) ve başka yere giden bağlar korunur; yalnızca başka bir
+    `gitpal.app` kopyasına ya da hiçbir yere gitmeyen bağ yenilenir (uygulama taşınmış).
+  - macOS'ta yalnızca gerçek bir `.app` içinden çalışırken kurulur: `bin/`'den çalışan geliştirme derlemesi
+    kullanıcının komutlarını ele geçirmesin.
+  - Paket gitpal taşımıyorsa (eski/tek dosya dağıtım) ve bu bir sürüm derlemesiyse (`1.2.3`), aynı sürümün CLI arşivi
+    GitHub'dan indirilir, `checksums.txt` ile doğrulanır; arşivden yalnızca kökteki `gitpal` alınır.
+- **Güncelleme (`internal/update`):** açılışta `releases/latest`'e anonim istek (User-Agent dışında hiçbir bilgi yok).
+  Ayar: `updates.check` (varsayılan açık, yalnızca global dosyadan; repo dosyası uygulamayı ağa çıkaramaz). Geliştirme
+  derlemesinde sürüm kıyaslanamadığı için şerit çıkmaz; denemek için `GITPAL_UPDATE_CURRENT=1.0.0`.
+  - "Güncelle": platformun paketi indirilir (Downloads), `<paket>.sha256` ile doğrulanır (yoksa ya da tutmazsa indirilen
+    silinir, sürüm sayfası önerilir), sonra açılır: macOS'ta `.dmg` penceresi, Windows'ta Gezgin'de seçili, Linux'ta
+    klasörü. **Uygulamayı kendi kendine değiştirmiyor**: çalışan uygulamanın yerini değiştirmek, imzasız paketlerle ve bu
+    ortamda macOS/Windows olmadan denenemezdi; yarım kalan bir değiştirme uygulamayı açılmaz bırakabilirdi. İndir +
+    doğrula + aç, ne yapılacağını şeritte yazar. Otomatik değiştirme V1.1 adayı.
+  - "Sonra" denilen sürüm o bilgisayarda bir daha gösterilmez (localStorage).
+- **Sürüm paketleri:** masaüstü artık her platformda gitpal ile birlikte çıkar: macOS `.dmg`, Windows
+  `gitpal-gui_<v>_windows_<arch>.zip`, Linux `gitpal-gui_<v>_linux_<arch>.tar.gz`; her birinin `.sha256`'sı yanında.
+  Tek dosya (`gitpal-gui_windows_amd64.exe` vb.) artık yayımlanmıyor. Paketler `scripts/package-gui.sh` ile üretilir;
+  CI her push'ta aynı betiği üç sistemde çalıştırıp içeriği ve sağlamayı denetler.
+- **Doğrulanan:** Linux'ta gerçek GUI boş bir ev klasörüyle açıldı: bağlar ve `~/.profile` satırı oluştu, yeni bir
+  oturum kabuğunda `gp --version` çalıştı, bildirim karşılama ekranında göründü. Güncelleme şeridi sahte bir sürüm
+  listesine karşı tıklanarak denendi (indir, doğrula, aç, "Sonra").
+  **Doğrulanmayan:** macOS ve Windows'ta gerçek kurulum (PATH/registry, dmg açılışı) bu ortamda yok; o kısımlar birim
+  testleri ve CI'daki paket denetimiyle sınandı.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
@@ -687,6 +723,7 @@ yayımlanmadı) ve tag bu değişiklikleri içeren commit'e taşındı.
 | `make cover` bulut konteynerinde düşüyor (`go: no such tool "covdata"`) | Ortam sorunu, `main`'de de aynı; kapsam elle ölçüldü. Mac ve CI'da beklenmiyor |
 | GUI'de SSH parola / host anahtarı istemi | V1.1 (A-020, A-036) |
 | `npm audit`: 2 düşük önem (`deepmerge`, `@sveltejs/vite-plugin-svelte` üzerinden) | Düzeltme yayımlanmadı ("No fix available"); yalnızca derleme aracı, uygulamaya girmiyor. `vite-plugin-svelte` güncellenince yeniden bakılacak |
+| Güncellemenin uygulamayı kendi kendine değiştirmesi (şu an indir + doğrula + aç) | V1.1 (A-042) |
 | GUI: fsnotify, sanal liste, ilerleme/iptal, 3 yönlü çakışma, rebase düzenleyici, GitHub ekranı | V1.1 (A-036) |
 
 ## Milestone durumu
