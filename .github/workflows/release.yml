@@ -1,8 +1,9 @@
 name: Release
 
-# v ile başlayan bir tag push'lanınca taslak bir GitHub sürümü oluşturur:
-# CLI paketleri goreleaser'la, masaüstü arayüzü her işletim sisteminde ayrı
-# derlenip aynı sürüme eklenir. Taslak, elle gözden geçirilip yayımlanır.
+# v ile başlayan bir tag push'lanınca GitHub sürümü oluşturur: CLI paketleri
+# goreleaser'la, masaüstü paketleri her işletim sisteminde ayrı derlenip aynı
+# sürüme eklenir. Sürüm önce taslaktır; bütün paketler yüklenince "publish" işi
+# yayımlar. Bir paket düşerse sürüm taslakta kalır (elle bakılır).
 on:
   push:
     tags: ["v*"]
@@ -93,3 +94,15 @@ jobs:
             -o 'gitpal-cli${{ matrix.exe }}' ./cmd/gitpal
           sh scripts/package-gui.sh 'gitpal-gui${{ matrix.exe }}' 'gitpal-cli${{ matrix.exe }}' "$v" dist-gui
           gh release upload "$GITHUB_REF_NAME" dist-gui/* --clobber
+
+  publish:
+    # Yalnızca CLI ve üç masaüstü paketi (yanlarındaki .sha256 ile) yüklendikten sonra:
+    # uygulamanın güncelleyicisi yarım bir sürümü hiç görmez.
+    needs: gui
+    runs-on: ubuntu-latest
+    steps:
+      - name: Taslağı yayımla
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest

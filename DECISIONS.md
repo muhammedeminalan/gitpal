@@ -711,6 +711,13 @@ Kullanıcı "karar gereken yerde kendin karar ver, sonda raporla" dedi; alınan 
   **Doğrulanmayan:** macOS ve Windows'ta gerçek kurulum (PATH/registry, dmg açılışı) bu ortamda yok; o kısımlar birim
   testleri ve CI'daki paket denetimiyle sınandı.
 
+### A-043 — Sürüm, paketler yüklenince kendiliğinden yayımlanır (2026-11-15)
+- `release.yml`'e `publish` işi: goreleaser taslağı oluşturur, üç masaüstü paketi (`.sha256`'larıyla) yüklenir, sonra
+  taslak yayımlanır (`gh release edit --draft=false --latest`). Neden: güncelleyici `releases/latest`'e bakıyor; taslak
+  orada görünmez, yarım yüklenmiş yayımlanmış bir sürüm ise "doğrulanamadı" hatasına yol açar. Bir paket düşerse
+  `publish` çalışmaz, sürüm taslakta kalır. Sürüm numarası ve tag hâlâ elle (otomatik sürüm PR'ı kullanıcıya önerildi,
+  karar bekliyor).
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |
