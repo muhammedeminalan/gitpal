@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -173,9 +174,12 @@ func TestFetchCLIFromTheReleaseArchive(t *testing.T) {
 	b, err := os.ReadFile(path)
 	require.NoError(t, err)
 	assert.Contains(t, string(b), "echo gitpal")
-	info, err := os.Stat(path)
-	require.NoError(t, err)
-	assert.NotZero(t, info.Mode()&0o100, "çalıştırılabilir")
+	// Windows'ta dosya izin bitleri yok; çalıştırılabilirlik uzantıdan (.exe) gelir.
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(path)
+		require.NoError(t, err)
+		assert.NotZero(t, info.Mode()&0o100, "çalıştırılabilir")
+	}
 }
 
 func TestFetchCLIFromAZipOnWindows(t *testing.T) {
