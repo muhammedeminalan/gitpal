@@ -114,7 +114,7 @@ func (f *dashFixture) settle(cmd tea.Cmd) {
 			return
 		}
 		switch msg.(type) {
-		case statusMsg, assessedMsg, doneMsg:
+		case statusMsg, assessedMsg, doneMsg, branchesMsg:
 		default:
 			return // a cursor blink or the like
 		}
@@ -317,4 +317,59 @@ func TestRebaseEditor(t *testing.T) {
 		_, err = EditRebase(context.Background(), RebaseOptions{Steps: steps, In: strings.NewReader("q"), Out: &out})
 		assert.ErrorIs(t, err, ErrCanceled)
 	})
+}
+
+func TestDashboardSwitchesBranches(t *testing.T) {
+	f := newDash(t)
+	assert.Contains(t, f.view(), "b branches", "ana ekranın yardım satırı b tuşunu gösterir")
+
+	f.press("b")
+	v := f.view()
+	assert.Contains(t, v, "Branches")
+	assert.Contains(t, v, "main")
+	assert.Contains(t, v, "* work", "bulunulan branch işaretli")
+	assert.Contains(t, v, "enter switch")
+
+	// İmleç bulunulan branch'te başlar; main bir yukarıda.
+	f.press("up", "enter")
+	assert.Equal(t, "main", f.repo.Git("branch", "--show-current"))
+	assert.Contains(t, f.view(), "Now on main.")
+	assert.Contains(t, f.view(), "b branches", "işlemden sonra ana ekrana dönülür")
+
+	f.press("b", "esc")
+	assert.Contains(t, f.view(), "b branches")
+}
+
+func TestDashboardCreatesABranch(t *testing.T) {
+	f := newDash(t)
+	f.press("b", "n")
+	assert.Contains(t, f.view(), "New branch name")
+	f.typeText("feature/login")
+	f.press("enter")
+	assert.Equal(t, "feature/login", f.repo.Git("branch", "--show-current"))
+	assert.Contains(t, f.view(), "Branch created: feature/login")
+
+	// Geçersiz ad: hata ve öneri gösterilir, hiçbir şey değişmez.
+	f.press("b", "n")
+	f.typeText("bad name")
+	f.press("enter")
+	assert.Equal(t, "feature/login", f.repo.Git("branch", "--show-current"))
+	assert.Contains(t, f.view(), "bad-name")
+
+	// esc vazgeçer.
+	f.press("b", "n", "esc", "esc")
+	assert.Contains(t, f.view(), "b branches")
+}
+
+func TestPickerSingleChoice(t *testing.T) {
+	items := []Item{{Label: "main", Value: "main"}, {Label: "work", Value: "work", Selected: true}, {Label: "x", Value: "x"}}
+	var m tea.Model = newSinglePicker("title", "help", items)
+	// İmleç işaretli (bulunulan) satırda başlar; kutucuk yok, boşluk bir şey seçmez.
+	assert.Contains(t, m.View(), "› work")
+	assert.NotContains(t, m.View(), "[x]")
+	m, _ = m.Update(key(" "))
+	m, _ = m.Update(key("up"))
+	m, cmd := m.Update(key("enter"))
+	require.NotNil(t, cmd)
+	assert.Equal(t, []string{"main"}, m.(picker).chosen())
 }

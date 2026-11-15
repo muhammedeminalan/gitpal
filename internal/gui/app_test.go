@@ -15,6 +15,7 @@ import (
 	"github.com/muhammedeminalan/gitpal/internal/core/git/gittest"
 	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
 	"github.com/muhammedeminalan/gitpal/internal/core/secrets/secretstest"
+	"github.com/muhammedeminalan/gitpal/internal/terminal"
 )
 
 type stubAI struct{ in ai.CommitInput }
@@ -273,4 +274,49 @@ func TestPickFolder(t *testing.T) {
 	dir, err = app.PickFolder()
 	require.NoError(t, err)
 	assert.Equal(t, "/somewhere", dir)
+}
+
+func TestOpenTerminalInTheRepository(t *testing.T) {
+	app, repo, _ := newApp(t, "language=tr")
+	err := app.OpenTerminal()
+	require.Error(t, err, "repo açık değilken")
+
+	_, err = app.OpenRepo(repo.Dir)
+	require.NoError(t, err)
+	var dir, hint string
+	app.deps.OpenTerminal = func(d, h string) error { dir, hint = d, h; return nil }
+	require.NoError(t, app.OpenTerminal())
+	assert.Equal(t, repo.Dir, dir)
+	assert.Contains(t, hint, "gitpal rehber", "ipucu kullanıcının dilinde")
+
+	app.deps.OpenTerminal = func(string, string) error { return terminal.ErrNoGitpal }
+	err = app.OpenTerminal()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "gitpal komut satırı aracı bulunamadı")
+
+	app.deps.OpenTerminal = func(string, string) error { return terminal.ErrNoTerminal }
+	err = app.OpenTerminal()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "terminal programı bulunamadı")
+
+	// Pencere yokken (testler, eksik derleme) açılacak bir şey de yok.
+	app.deps.OpenTerminal = nil
+	assert.Error(t, app.OpenTerminal())
+}
+
+func TestGuideForTheHelpTab(t *testing.T) {
+	app, _, _ := newApp(t, "language=tr")
+	groups := app.Guide()
+	require.NotEmpty(t, groups)
+	assert.Equal(t, "Başlarken", groups[0].Title)
+	assert.NotEmpty(t, groups[0].Entries[0].Example)
+}
+
+func TestSwitchSaysWhereYouAre(t *testing.T) {
+	app, repo, _ := newApp(t, "language=tr")
+	_, err := app.OpenRepo(repo.Dir)
+	require.NoError(t, err)
+	out, err := app.Do(OpRequest{Kind: "switch", Branch: "main"}, Answer{Approved: true})
+	require.NoError(t, err)
+	assert.Equal(t, "Şu an main branch'indesin.", out.Message)
 }

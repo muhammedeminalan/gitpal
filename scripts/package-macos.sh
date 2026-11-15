@@ -2,8 +2,11 @@
 # gitpal masaüstü arayüzünü macOS için paketler: derlenmiş gitpal-gui dosyasını
 # gitpal.app içine koyar ve onu bir .dmg disk imajına sarar.
 #
-#   scripts/package-macos.sh <gitpal-gui dosyası> <sürüm> <çıktı.dmg>
-#   scripts/package-macos.sh bin/gitpal-gui 1.0.0 dist/gitpal_1.0.0_macos_arm64.dmg
+#   scripts/package-macos.sh <gitpal-gui dosyası> <gitpal dosyası> <sürüm> <çıktı.dmg>
+#   scripts/package-macos.sh bin/gitpal-gui bin/gitpal 1.0.0 dist/gitpal_1.0.0_macos_arm64.dmg
+#
+# gitpal (komut satırı aracı) da paketin içine konur: masaüstündeki Terminal düğmesi
+# onu çalıştırır, kullanıcının ayrıca kurması gerekmez (DECISIONS A-041).
 #
 # Yalnızca macOS'ta çalışır (codesign ve hdiutil gerekir). Kolay yolu: `make dmg`.
 #
@@ -20,14 +23,17 @@ fail() {
 }
 
 [ "$(uname -s)" = "Darwin" ] || fail "yalnızca macOS'ta çalışır"
-[ $# -eq 3 ] || fail "kullanım: package-macos.sh <gitpal-gui dosyası> <sürüm> <çıktı.dmg>"
+[ $# -eq 4 ] || fail "kullanım: package-macos.sh <gitpal-gui dosyası> <gitpal dosyası> <sürüm> <çıktı.dmg>"
 
 binary=$1
-version=${2#v}
-output=$3
+cli=$2
+version=${3#v}
+output=$4
 
-[ -f "$binary" ] || fail "dosya yok: $binary"
-[ -x "$binary" ] || fail "çalıştırılabilir değil: $binary"
+for f in "$binary" "$cli"; do
+	[ -f "$f" ] || fail "dosya yok: $f"
+	[ -x "$f" ] || fail "çalıştırılabilir değil: $f"
+done
 case "$output" in
 *.dmg) ;;
 *) fail "çıktı .dmg ile bitmeli: $output" ;;
@@ -47,6 +53,8 @@ app="$work/root/gitpal.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$binary" "$app/Contents/MacOS/gitpal-gui"
 chmod 755 "$app/Contents/MacOS/gitpal-gui"
+cp "$cli" "$app/Contents/MacOS/gitpal"
+chmod 755 "$app/Contents/MacOS/gitpal"
 # Dock ve Finder ikonu (build/darwin/gitpal.icns, `make icons` üretir). Betik hangi
 # klasörden çağrılırsa çağrılsın repo kökü betiğin yerinden bulunur.
 repo=$(cd "$(dirname "$0")/.." && pwd)

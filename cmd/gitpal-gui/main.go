@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
+	goruntime "runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -22,6 +24,7 @@ import (
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
 	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
 	"github.com/muhammedeminalan/gitpal/internal/gui"
+	"github.com/muhammedeminalan/gitpal/internal/terminal"
 )
 
 func main() {
@@ -49,6 +52,7 @@ func run() error {
 		PickFolder: func(ctx context.Context) (string, error) {
 			return runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{CanCreateDirectories: true})
 		},
+		OpenTerminal: openTerminal,
 	})
 	// A path on the command line opens that repository straight away.
 	if len(os.Args) > 1 {
@@ -76,4 +80,19 @@ func linuxIcon() []byte {
 		return nil
 	}
 	return icon
+}
+
+// openTerminal, sistemin terminalini dir'de açıp gitpal'ı başlatır. gitpal önce bu
+// programın yanında aranır (macOS'ta .app paketinin içi): Finder'dan açılan
+// uygulamanın PATH'i kısadır, Homebrew gibi yerleri görmez.
+func openTerminal(dir, hint string) error {
+	self, _ := os.Executable()
+	gitpal := terminal.FindGitpal(goruntime.GOOS, self, func(p string) bool {
+		info, err := os.Stat(p)
+		return err == nil && info.Mode().IsRegular()
+	}, exec.LookPath)
+	return terminal.Open(terminal.Options{
+		GOOS: goruntime.GOOS, Dir: dir, Gitpal: gitpal, Hint: hint,
+		LookPath: exec.LookPath, Getenv: os.Getenv, Environ: os.Environ(),
+	})
 }

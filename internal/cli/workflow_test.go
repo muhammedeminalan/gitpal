@@ -501,3 +501,73 @@ func TestWithoutATerminalASimpleConfirmationPointsToYes(t *testing.T) {
 	assert.Equal(t, cli.ExitBlocked, h.run("discard", "a.txt", "--yes"))
 	assert.Contains(t, h.stderr.String(), "does not cover")
 }
+
+func TestGuideShowsExamplesNextToWhatTheyDo(t *testing.T) {
+	h := newHarness(t)
+	h.writeConfig("language: tr\n")
+	require.Equal(t, cli.ExitOK, h.run("guide"), h.stderr.String())
+	out := h.stdout.String()
+	for _, want := range []string{"Başlarken", "Günlük iş", "Branch'ler", "Geri alma ve kurtarma"} {
+		assert.Contains(t, out, want)
+	}
+	// Örnek ve açıklaması aynı satırda, yan yana.
+	assert.Regexp(t, `(?m)^\s+gitpal save\s{2,}Dosya seç → commit → push`, out)
+	assert.Regexp(t, `(?m)^\s+gitpal undo\s{2,}gitpal'ın yaptığı son işlemi geri alır`, out)
+
+	// Türkçe adıyla da çalışır.
+	require.Equal(t, cli.ExitOK, h.run("rehber"))
+	assert.Equal(t, out, h.stdout.String())
+
+	h.writeConfig("language: en\n")
+	require.Equal(t, cli.ExitOK, h.run("guide", "--json"))
+	assert.Contains(t, h.stdout.String(), `"example": "gitpal save"`)
+	assert.Contains(t, h.stdout.String(), `"title": "Everyday work"`)
+}
+
+func TestUsageLinesNameArgumentsInTheUsersLanguage(t *testing.T) {
+	h := newHarness(t)
+	h.writeConfig("language: tr\n")
+	require.Equal(t, cli.ExitOK, h.run("branch", "switch", "--help"))
+	assert.Contains(t, h.stdout.String(), "gitpal branch switch [seçenekler] <ad>")
+	require.Equal(t, cli.ExitOK, h.run("add", "--help"))
+	assert.Contains(t, h.stdout.String(), "gitpal add [seçenekler] [dosyalar...]")
+	require.Equal(t, cli.ExitOK, h.run("log", "--help"))
+	assert.Contains(t, h.stdout.String(), "[revizyon] [-- dosyalar...]")
+
+	h.writeConfig("language: en\n")
+	require.Equal(t, cli.ExitOK, h.run("branch", "switch", "--help"))
+	assert.Contains(t, h.stdout.String(), "gitpal branch switch [flags] <name>")
+}
+
+func TestBranchSwitchWithoutANameAsksWhichOne(t *testing.T) {
+	h := newHarness(t)
+	h.writeConfig("language: en\n")
+	repo := gittest.NewRepo(t)
+	repo.WriteFile("a.txt", "a\n")
+	repo.Commit("first")
+	repo.Git("branch", "feature/x")
+	h.cwd = repo.Dir
+
+	var asked tui.PickOptions
+	h.env.Interactive = func() bool { return true }
+	h.env.Pick = func(_ context.Context, opts tui.PickOptions) ([]string, error) {
+		asked = opts
+		return []string{"feature/x"}, nil
+	}
+	require.Equal(t, cli.ExitOK, h.run("branch", "switch"), h.stderr.String())
+	assert.Equal(t, "feature/x", repo.Git("branch", "--show-current"))
+	assert.True(t, asked.Single, "tek seçim")
+	var labels []string
+	for _, it := range asked.Items {
+		labels = append(labels, it.Value)
+		if it.Value == "main" {
+			assert.True(t, it.Selected, "bulunulan branch işaretli gelir")
+		}
+	}
+	assert.Equal(t, []string{"feature/x", "main"}, labels)
+
+	// Terminal yoksa ad zorunlu.
+	h.env.Interactive = func() bool { return false }
+	assert.Equal(t, cli.ExitError, h.run("branch", "switch"))
+	assert.Contains(t, h.stderr.String(), "gitpal branch switch <name>")
+}

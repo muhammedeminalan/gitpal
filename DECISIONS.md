@@ -647,6 +647,34 @@ yayımlanmadı) ve tag bu değişiklikleri içeren commit'e taşındı.
   `.exe`'de kaynak `go-winres extract` ile, `.icns` Pillow ile okundu. Linux GUI Xvfb'de açıldı, logo üst çubukta
   ve karşılama ekranında görünüyor.
 
+### A-041 — Branch'ler arası geçiş, Terminal düğmesi, komut rehberi (2026-11-15)
+- **Masaüstü:** üst çubuktaki branch adı açılır menü (arama, yerel + uzak branch'ler, "Yeni branch"); soldaki listede
+  branch adına tıklamak geçer; "Yeni branch" penceresi açar ve geçer. Geçiş `Guard.Do` üzerinden (kirli çalışma alanı
+  yedeklenir); bildirim ham yedek ref'i yerine "Şu an X branch'indesin." der. Palette "Branch'e geç: …" satırları.
+- **Terminal düğmesi (`internal/terminal`):** kullanıcının kararı: sistemin varsayılan terminali, araya girilmez.
+  macOS: geçici `.command` dosyası `open` ile açılır → `.command` türünün varsayılan uygulaması (Terminal; kullanıcı
+  iTerm'i varsayılan yaptıysa iTerm), Otomasyon izni istemez; dosya kendini siler. Windows: `cmd /k` yeni konsolda
+  (Windows 11'de varsayılan terminal ayarı geçerli). Linux: `$TERMINAL`, sonra `x-terminal-emulator`, gnome-terminal,
+  konsole, xfce4-terminal, kitty, alacritty, wezterm, xterm. Hepsinde: repo klasörü, PATH'in başına gitpal'ın klasörü,
+  `gitpal` ana ekranı; çıkınca ipucu satırı ve kullanıcının kabuğu (pencere kapanmaz). Değerler tek tırnakla (Unix) ya
+  da `^` ile (cmd) korunur; argümanlar kabuğa birleştirilmez. Süreç başlatma `internal/core/git` dışında: forbidigo
+  istisnası gerekçesiyle `start_*.go` içinde (A-036'daki `gitpal gui` ve editör gibi).
+- **gitpal'ı bulma:** önce masaüstü programının yanında (macOS'ta `.app` içi), sonra PATH. Finder'dan açılan
+  uygulamanın PATH'i Homebrew'u görmez; bu yüzden `.dmg` artık `gitpal`'ı `Contents/MacOS/` içinde taşıyor
+  (`package-macos.sh` 4 argüman alıyor; CI paketin içindeki `gitpal --version`'ı çalıştırıyor). Windows/Linux GUI tek
+  dosya dağıtıldığı için orada `gitpal` PATH'te (install betiği) ya da yanında olmalı; yoksa anlaşılır hata.
+- **TUI:** ana ekranda `b` → branch listesi (enter geç, `n` yeni branch, esc geri); geçiş güvenlik katmanından.
+- **CLI:** `gitpal branch switch` adsız çağrılınca tek seçimli listeden seçtirir (seçiciye `Single` kipi); terminal yoksa
+  ad zorunlu, mesaj `<ad>` ile.
+- **Komut rehberi (`internal/core/guide`):** grup + örnek komut + açıklama (TR/EN); `gitpal guide` (`rehber`) ve
+  masaüstü "Yardım" sekmesi (arama, kopyala) aynı listeyi gösterir. Test, her örneğin gerçek bir komuta, tanınan
+  seçeneklere ve doğru argüman sayısına çözüldüğünü denetler (komut değişirse rehber eskimesin).
+- **Yardım metinleri:** kullanım satırlarındaki argüman adları dile çevrildi (`<name>` → `<ad>`, `[paths...]` →
+  `[dosyalar...]`); fazladan boşluk düzeltildi. Git terimleri (branch, commit…) Türkçeleştirme kararına kadar aynı.
+- **Doğrulanmayan:** Terminal düğmesi macOS ve Windows'ta gerçekten açılmadı (bu ortamda yok); Linux'ta sahte bir
+  terminal programıyla uçtan uca, diğerleri plan testleriyle sınandı. Masaüstü akışı (menü, yeni branch, geçiş,
+  Yardım) gerçek Go tarafına bağlı arayüzde tıklanarak denendi.
+
 ## Bilinen eksikler ve ertelenenler
 
 | Konu | Ne zaman |

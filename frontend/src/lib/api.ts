@@ -38,6 +38,8 @@ export interface Stash { Index: number; Ref: string; Message: string }
 export interface Tag { Name: string; Commit: string }
 export interface Remote { Name: string; FetchURL: string }
 export interface Identity { Name: string; Email: string }
+export interface GuideEntry { example: string; text: string }
+export interface GuideGroup { title: string; entries: GuideEntry[] }
 
 type Bound = Record<string, (...args: unknown[]) => Promise<unknown>>
 
@@ -64,6 +66,8 @@ export const api = {
   unstage: (paths: string[]) => call<void>('Unstage', paths),
   resolve: (paths: string[], side: '' | 'ours' | 'theirs') => call<void>('Resolve', paths, side),
   pickFolder: () => call<string>('PickFolder'),
+  openTerminal: () => call<void>('OpenTerminal'),
+  guide: () => call<GuideGroup[]>('Guide'),
   stageHunks: (path: string, staged: boolean, hunks: number[]) => call<void>('StageHunks', path, staged, hunks),
   branches: () => call<Branch[]>('Branches'),
   stashes: () => call<Stash[]>('Stashes'),

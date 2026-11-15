@@ -29,14 +29,20 @@ type Item struct {
 type PickOptions struct {
 	Title, Help string
 	Items       []Item
-	In          io.Reader
-	Out         io.Writer
+	// Single: tek seçim. Enter imlecin altındakini seçer; işaretli öğe (ör.
+	// bulunulan branch) imlecin başlangıç yeridir.
+	Single bool
+	In     io.Reader
+	Out    io.Writer
 }
 
 // Pick shows a list of items to choose from and returns the values of the
 // chosen ones, in list order.
 func Pick(ctx context.Context, opts PickOptions) ([]string, error) {
 	m := newPicker(opts.Title, opts.Help, opts.Items)
+	if opts.Single {
+		m = newSinglePicker(opts.Title, opts.Help, opts.Items)
+	}
 	final, err := tea.NewProgram(m, tea.WithContext(ctx), tea.WithInput(opts.In), tea.WithOutput(opts.Out)).Run()
 	if err != nil {
 		if errors.Is(err, tea.ErrProgramKilled) || errors.Is(err, context.Canceled) {
@@ -65,8 +71,21 @@ type picker struct {
 	title, help string
 	items       []Item
 	cursor      int
+	single      bool
 	done        bool
 	canceled    bool
+}
+
+func newSinglePicker(title, help string, items []Item) picker {
+	p := newPicker(title, help, items)
+	p.single = true
+	for i := range p.items {
+		if p.items[i].Selected {
+			p.cursor = i
+		}
+		p.items[i].Selected = false
+	}
+	return p
 }
 
 func newPicker(title, help string, items []Item) picker {
@@ -93,14 +112,22 @@ func (p picker) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.cursor++
 		}
 	case " ", "x":
-		if len(p.items) > 0 {
+		if len(p.items) > 0 && !p.single {
 			p.items[p.cursor].Selected = !p.items[p.cursor].Selected
 		}
 	case "a":
-		p.setAll(true)
+		if !p.single {
+			p.setAll(true)
+		}
 	case "n":
-		p.setAll(false)
+		if !p.single {
+			p.setAll(false)
+		}
 	case "enter":
+		if p.single && len(p.items) > 0 {
+			p.setAll(false)
+			p.items[p.cursor].Selected = true
+		}
 		p.done = true
 		return p, tea.Quit
 	case "q", "esc", "ctrl+c":
@@ -133,11 +160,14 @@ func (p picker) View() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render(p.title) + "\n\n")
 	for i, item := range p.items {
-		box := "[ ]"
-		if item.Selected {
-			box = selectedStyle.Render("[x]")
+		line := item.Label
+		if !p.single {
+			box := "[ ]"
+			if item.Selected {
+				box = selectedStyle.Render("[x]")
+			}
+			line = box + " " + item.Label
 		}
-		line := box + " " + item.Label
 		if i == p.cursor {
 			line = cursorStyle.Render("›") + " " + line
 		} else {

@@ -176,6 +176,12 @@ const (
 	// TUI
 	MsgTUIHelpPicker    Key = "tui.help.picker"
 	MsgTUIHelpDashboard Key = "tui.help.dashboard"
+	MsgTUIBranches      Key = "tui.branches"
+	MsgTUIHelpPickOne   Key = "tui.help.pick_one"
+	MsgBranchPickTitle  Key = "cli.branch.pick_title"
+	MsgBranchNameNeeded Key = "cli.branch.name_needed"
+	MsgTUIHelpBranches  Key = "tui.help.branches"
+	MsgTUINewBranch     Key = "tui.new_branch"
 	MsgTUIStaged        Key = "tui.staged"
 	MsgTUIChanges       Key = "tui.changes"
 	MsgTUINoChanges     Key = "tui.no_changes"
@@ -353,7 +359,13 @@ var cliMessages = map[Key]message{
 	MsgCloneDone:   {tr: "Kopyalandı: %s", en: "Cloned: %s"},
 
 	MsgTUIHelpPicker:    {tr: "↑/↓ gez • boşluk seç • a hepsi • n hiçbiri • enter onayla • q vazgeç", en: "↑/↓ move • space toggle • a all • n none • enter confirm • q cancel"},
-	MsgTUIHelpDashboard: {tr: "↑/↓ gez • boşluk stage • a hepsini ekle • c commit • p push • l pull • f fetch • r yenile • q çık", en: "↑/↓ move • space stage • a stage all • c commit • p push • l pull • f fetch • r refresh • q quit"},
+	MsgTUIHelpDashboard: {tr: "↑/↓ gez • boşluk stage • a hepsini ekle • c commit • p push • l pull • f fetch • b branch'ler • r yenile • q çık", en: "↑/↓ move • space stage • a stage all • c commit • p push • l pull • f fetch • b branches • r refresh • q quit"},
+	MsgTUIBranches:      {tr: "Branch'ler", en: "Branches"},
+	MsgTUIHelpPickOne:   {tr: "↑/↓ gez • enter seç • q vazgeç", en: "↑/↓ move • enter choose • q cancel"},
+	MsgBranchPickTitle:  {tr: "Hangi branch'e geçilsin?", en: "Switch to which branch?"},
+	MsgBranchNameNeeded: {tr: "Branch adı gerekli: %s", en: "A branch name is needed: %s"},
+	MsgTUIHelpBranches:  {tr: "↑/↓ gez • enter geç • n yeni branch • esc geri", en: "↑/↓ move • enter switch • n new branch • esc back"},
+	MsgTUINewBranch:     {tr: "Yeni branch adı (enter: oluştur ve geç, esc: vazgeç)", en: "New branch name (enter: create and switch, esc: cancel)"},
 	MsgTUIStaged:        {tr: "Stage'de", en: "Staged"},
 	MsgTUIChanges:       {tr: "Değişiklikler", en: "Changes"},
 	MsgTUINoChanges:     {tr: "Değişiklik yok.", en: "No changes."},

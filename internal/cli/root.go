@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -50,7 +51,7 @@ func (a *app) newRootCmd() *cobra.Command {
 		a.newStashCmd(), a.newTagCmd(), a.newReflogCmd(), a.newRecoverCmd(), a.newBlameCmd(),
 		a.newRemoteCmd(), a.newSubmoduleCmd(), a.newIdentityCmd(), a.newWorkspaceCmd(),
 		a.newRepoCmd(), a.newPRCmd(), a.newIssueCmd(), a.newReleaseCmd(), a.newActionsCmd(),
-		a.newGUICmd(),
+		a.newGUICmd(), a.newGuideCmd(),
 	)
 	// After the commands: cobra adds help and completion only to a command
 	// that has subcommands.
@@ -85,7 +86,7 @@ func (a *app) localizeHelp(root *cobra.Command, loc i18n.Localizer) {
 		"@MORE@", loc.T(i18n.MsgHelpMore, more),
 	)
 	root.SetUsageTemplate(r.Replace(`@USAGE@{{if .Runnable}}
-  {{.CommandPath}}{{if .HasAvailableFlags}} [@FLAGSWORD@]{{end}}{{if ne .Use .Name}} {{slice .Use (len .Name)}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}}{{if .HasAvailableFlags}} [@FLAGSWORD@]{{end}}{{if ne .Use .Name}}{{slice .Use (len .Name)}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
   {{.CommandPath}} [@COMMANDWORD@]{{end}}{{if gt (len .Aliases) 0}}
 
 @ALIASES@
@@ -105,6 +106,7 @@ func (a *app) localizeHelp(root *cobra.Command, loc i18n.Localizer) {
 
 @MORE@{{end}}
 `))
+	localizeUse(root, loc.Lang())
 	root.InitDefaultHelpCmd()
 	root.InitDefaultCompletionCmd()
 	for _, c := range root.Commands() {
@@ -114,5 +116,23 @@ func (a *app) localizeHelp(root *cobra.Command, loc i18n.Localizer) {
 		case "completion":
 			c.Short = loc.T(i18n.MsgCompletionShort)
 		}
+	}
+}
+
+// argPattern, kullanım satırındaki <ad> ya da [ad...] biçimli argümanları bulur.
+var argPattern = regexp.MustCompile(`([<\[](?:-- )?)([a-z][a-z/-]*)((?:\.\.\.)?[>\]])`)
+
+// localizeUse, her komutun kullanım satırındaki argüman adlarını kullanıcının
+// diline çevirir. Komutun adı (Use'un ilk kelimesi) değişmez.
+func localizeUse(c *cobra.Command, lang i18n.Lang) {
+	name, rest, ok := strings.Cut(c.Use, " ")
+	if ok {
+		c.Use = name + " " + argPattern.ReplaceAllStringFunc(rest, func(m string) string {
+			p := argPattern.FindStringSubmatch(m)
+			return p[1] + i18n.ArgName(lang, p[2]) + p[3]
+		})
+	}
+	for _, sub := range c.Commands() {
+		localizeUse(sub, lang)
 	}
 }

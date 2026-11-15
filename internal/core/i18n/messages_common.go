@@ -29,6 +29,32 @@ const (
 	MsgCompletionShort Key = "cli.completion.short"
 )
 
+// argNames, kullanım satırlarındaki argüman adlarının çevirisi (<name> → <ad>).
+// Git terimleri (branch, commit, remote, tag, ref) bilerek çevrilmedi; terim
+// sözlüğü kararı ayrı (Türkçeleştirme işi).
+var argNames = map[string]message{
+	"name": {tr: "ad", en: "name"}, "number": {tr: "numara", en: "number"},
+	"paths": {tr: "dosyalar", en: "paths"}, "path": {tr: "dosya", en: "path"},
+	"dir": {tr: "klasör", en: "dir"}, "url": {tr: "adres", en: "url"}, //nolint:misspell // Türkçe "adres"
+	"revision": {tr: "revizyon", en: "revision"}, "old": {tr: "eski", en: "old"},
+	"new": {tr: "yeni", en: "new"}, "key": {tr: "anahtar", en: "key"},
+	"value": {tr: "değer", en: "value"}, "start": {tr: "başlangıç", en: "start"},
+	"into": {tr: "hedef", en: "into"}, "owner/name": {tr: "sahip/ad", en: "owner/name"},
+	"new-branch": {tr: "yeni-branch", en: "new-branch"}, "labels": {tr: "etiketler", en: "labels"},
+	"commits": {tr: "commit'ler", en: "commits"},
+}
+
+// ArgName bir kullanım satırı argümanının adını dile çevirir; bilinmeyeni olduğu gibi bırakır.
+func ArgName(lang Lang, word string) string {
+	if m, ok := argNames[word]; ok {
+		if lang == TR {
+			return m.tr
+		}
+		return m.en
+	}
+	return word
+}
+
 var commonMessages = map[Key]message{
 	MsgHelpUsage:       {tr: "Kullanım:", en: "Usage:"},
 	MsgHelpAliases:     {tr: "Diğer adları:", en: "Aliases:"},

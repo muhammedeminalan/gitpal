@@ -19,10 +19,12 @@ import (
 	"github.com/muhammedeminalan/gitpal/internal/core/config"
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
 	"github.com/muhammedeminalan/gitpal/internal/core/graph"
+	"github.com/muhammedeminalan/gitpal/internal/core/guide"
 	"github.com/muhammedeminalan/gitpal/internal/core/history"
 	"github.com/muhammedeminalan/gitpal/internal/core/i18n"
 	"github.com/muhammedeminalan/gitpal/internal/core/safety"
 	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
+	"github.com/muhammedeminalan/gitpal/internal/terminal"
 	"github.com/muhammedeminalan/gitpal/internal/version"
 )
 
@@ -39,6 +41,9 @@ type Deps struct {
 	// PickFolder shows the system's folder dialog; "" when the user cancels.
 	// Nil where there is no window (tests).
 	PickFolder func(ctx context.Context) (string, error)
+	// OpenTerminal opens the system's terminal in dir and starts gitpal there;
+	// hint is shown when gitpal quits. Nil where there is no window (tests).
+	OpenTerminal func(dir, hint string) error
 }
 
 // App is bound to the frontend.
@@ -310,6 +315,33 @@ func (a *App) Resolve(paths []string, side string) error {
 		return a.fail(runner.Stage(ctx, root, paths))
 	}
 	return a.fail(runner.ResolveConflict(ctx, root, paths, git.ConflictSide(side)))
+}
+
+// OpenTerminal opens the system's default terminal in the open repository,
+// with gitpal's main screen started in it.
+func (a *App) OpenTerminal() error {
+	_, _, root, _, err := a.current()
+	if err != nil {
+		return err
+	}
+	if a.deps.OpenTerminal == nil {
+		return errors.New(i18n.T(a.lang(), i18n.MsgTerminalNotFound))
+	}
+	err = a.deps.OpenTerminal(root, i18n.T(a.lang(), i18n.MsgTerminalHint))
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, terminal.ErrNoGitpal):
+		return errors.New(i18n.T(a.lang(), i18n.MsgTerminalNoGitpal))
+	case errors.Is(err, terminal.ErrNoTerminal):
+		return errors.New(i18n.T(a.lang(), i18n.MsgTerminalNotFound))
+	}
+	return a.fail(err)
+}
+
+// Guide returns the command guide for the Help tab, in the user's language.
+func (a *App) Guide() []guide.Group {
+	return guide.For(a.lang())
 }
 
 // PickFolder asks the user for a folder with the system dialog.

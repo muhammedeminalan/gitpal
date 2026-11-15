@@ -133,12 +133,22 @@ func (a *app) newBranchSwitchCmd() *cobra.Command {
 		Use:     "switch <name>",
 		Aliases: []string{"checkout"},
 		Short:   i18n.T(a.lang, i18n.MsgBranchSwitchShort),
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if _, err := a.runOp(cmd.Context(), safety.Switch(args[0])); err != nil {
+			name := ""
+			if len(args) == 1 {
+				name = args[0]
+			} else {
+				// Ad verilmediyse listeden seçtir (git'in komutlarını bilmeyen için).
+				var err error
+				if name, err = a.pickBranch(cmd); err != nil {
+					return err
+				}
+			}
+			if _, err := a.runOp(cmd.Context(), safety.Switch(name)); err != nil {
 				return err
 			}
-			fmt.Fprintln(a.env.Stdout, i18n.T(a.lang, i18n.MsgBranchSwitched, args[0]))
+			fmt.Fprintln(a.env.Stdout, i18n.T(a.lang, i18n.MsgBranchSwitched, name))
 			return nil
 		},
 	}
@@ -237,4 +247,35 @@ func (a *app) newBranchCleanCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// pickBranch, yerel branch'lerden birini tek seçimli listeden seçtirir. Terminal
+// yoksa (script) ad zorunludur.
+func (a *app) pickBranch(cmd *cobra.Command) (string, error) {
+	if !a.env.Interactive() {
+		return "", errors.New(i18n.T(a.lang, i18n.MsgBranchNameNeeded, cmd.CommandPath()+" <"+i18n.ArgName(a.lang, "name")+">"))
+	}
+	runner, root, err := a.git()
+	if err != nil {
+		return "", err
+	}
+	branches, err := runner.Branches(cmd.Context(), root, git.BranchListOptions{})
+	if err != nil {
+		return "", err
+	}
+	items := make([]tui.Item, 0, len(branches))
+	for _, b := range branches {
+		items = append(items, tui.Item{Label: b.Name, Value: b.Name, Selected: b.Current})
+	}
+	chosen, err := a.env.Pick(cmd.Context(), tui.PickOptions{
+		Title: i18n.T(a.lang, i18n.MsgBranchPickTitle), Help: i18n.T(a.lang, i18n.MsgTUIHelpPickOne),
+		Items: items, In: a.env.Stdin, Out: a.env.Stderr, Single: true,
+	})
+	if errors.Is(err, tui.ErrCanceled) || (err == nil && len(chosen) == 0) {
+		return "", errCanceled
+	}
+	if err != nil {
+		return "", err
+	}
+	return chosen[0], nil
 }

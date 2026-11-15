@@ -45,6 +45,10 @@ const (
 	modeCommit
 	modeConfirm
 	modeBusy
+	// modeBranches: b ile açılan branch listesi.
+	modeBranches
+	// modeNewBranch: listede n ile yeni branch adı sorulur.
+	modeNewBranch
 )
 
 // row is one line of the file list.
@@ -63,12 +67,16 @@ type dashboard struct {
 	cursor int
 	mode   mode
 
-	message  textinput.Model
-	typed    textinput.Model
-	pending  *safety.Assessment
-	info     string
-	err      string
-	quitting bool
+	message textinput.Model
+	typed   textinput.Model
+	// branches ve bcursor, branch listesi (yalnızca yereldekiler) ve seçili satır.
+	branches   []git.Branch
+	bcursor    int
+	branchName textinput.Model
+	pending    *safety.Assessment
+	info       string
+	err        string
+	quitting   bool
 }
 
 // Messages the dashboard's commands send back.
@@ -85,13 +93,19 @@ type (
 		info string
 		err  error
 	}
+	branchesMsg struct {
+		branches []git.Branch
+		err      error
+	}
 )
 
 func newDashboard(ctx context.Context, opts DashboardOptions) dashboard {
 	msg := textinput.New()
 	msg.CharLimit = 500
 	typed := textinput.New()
-	return dashboard{ctx: ctx, opts: opts, loc: i18n.For(opts.Lang), message: msg, typed: typed}
+	name := textinput.New()
+	name.CharLimit = 200
+	return dashboard{ctx: ctx, opts: opts, loc: i18n.For(opts.Lang), message: msg, typed: typed, branchName: name}
 }
 
 func (d dashboard) Init() tea.Cmd { return d.refresh() }
@@ -135,6 +149,17 @@ func (d dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d, nil
 	case assessedMsg:
 		return d.onAssessed(msg)
+	case branchesMsg:
+		if msg.err != nil {
+			return d.Update(doneMsg{err: msg.err})
+		}
+		d.branches, d.bcursor, d.mode = msg.branches, 0, modeBranches
+		for i, b := range msg.branches {
+			if b.Current {
+				d.bcursor = i
+			}
+		}
+		return d, nil
 	case doneMsg:
 		d.mode = modeList
 		d.pending = nil
@@ -154,6 +179,10 @@ func (d dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return d, nil
 		case modeList:
 			return d.updateList(msg)
+		case modeBranches:
+			return d.updateBranches(msg)
+		case modeNewBranch:
+			return d.updateNewBranch(msg)
 		}
 	}
 	return d, nil
@@ -207,8 +236,78 @@ func (d dashboard) updateList(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return d.busy(func() doneMsg {
 			return doneMsg{err: d.opts.Git.Fetch(d.ctx, d.opts.Dir, git.FetchOptions{}), info: d.loc.T(i18n.MsgFetchDone)}
 		})
+	case "b":
+		d.mode, d.err, d.info = modeBusy, "", ""
+		return d, func() tea.Msg {
+			all, err := d.opts.Git.Branches(d.ctx, d.opts.Dir, git.BranchListOptions{})
+			return branchesMsg{branches: all, err: err}
+		}
 	}
 	return d, nil
+}
+
+// updateBranches: listede gezinme, enter ile geçme, n ile yeni branch.
+func (d dashboard) updateBranches(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "esc", "q", "ctrl+c":
+		d.mode = modeList
+	case "up", "k":
+		if d.bcursor > 0 {
+			d.bcursor--
+		}
+	case "down", "j":
+		if d.bcursor < len(d.branches)-1 {
+			d.bcursor++
+		}
+	case "n":
+		d.mode = modeNewBranch
+		d.branchName.Reset()
+		d.branchName.Focus()
+		return d, textinput.Blink
+	case "enter":
+		if len(d.branches) == 0 {
+			return d, nil
+		}
+		b := d.branches[d.bcursor]
+		if b.Current {
+			d.mode = modeList
+			return d, nil
+		}
+		// Geçiş de güvenlik katmanından: commit'lenmemiş değişiklik varsa yedeklenir.
+		return d.assess(safety.Switch(b.Name))
+	}
+	return d, nil
+}
+
+// updateNewBranch: ad yazılır; enter yeni branch'i açıp ona geçer. Yıkıcı bir
+// işlem değil (hiçbir şey kaybolmaz), o yüzden onay sorulmaz.
+func (d dashboard) updateNewBranch(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "esc", "ctrl+c":
+		d.mode = modeBranches
+		return d, nil
+	case "enter":
+		name := strings.TrimSpace(d.branchName.Value())
+		if name == "" {
+			return d, nil
+		}
+		return d.busy(func() doneMsg {
+			if err := d.opts.Git.ValidateBranchName(d.ctx, d.opts.Dir, name); err != nil {
+				text := i18n.Describe(d.opts.Lang, err)
+				if s := git.SuggestBranchName(name); s != "" && s != name {
+					text += "\n" + d.loc.T(i18n.MsgBranchSuggest, s)
+				}
+				return doneMsg{err: errors.New(text)}
+			}
+			if err := d.opts.Git.CreateAndSwitch(d.ctx, d.opts.Dir, name, ""); err != nil {
+				return doneMsg{err: err}
+			}
+			return doneMsg{info: d.loc.T(i18n.MsgBranchCreated, name)}
+		})
+	}
+	var cmd tea.Cmd
+	d.branchName, cmd = d.branchName.Update(key)
+	return d, cmd
 }
 
 func (d dashboard) updateCommit(key tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -304,6 +403,8 @@ func (d dashboard) describe(op safety.Operation, res safety.Result) string {
 			return d.loc.T(i18n.MsgPushUpToDate)
 		}
 		return d.loc.T(i18n.MsgPushDone, res.Push.Branch, res.Push.Remote, res.Push.RemoteBranch)
+	case safety.OpSwitch:
+		return d.loc.T(i18n.MsgBranchSwitched, op.Branch)
 	case safety.OpPull:
 		if !res.Pull.Updated {
 			return d.loc.T(i18n.MsgPullUpToDate)
@@ -352,6 +453,8 @@ func (d dashboard) View() string {
 		b.WriteString(confirmView(d.loc, *d.pending, d.typed))
 	case modeBusy:
 		b.WriteString(helpStyle.Render(d.loc.T(i18n.MsgTUIWorking)) + "\n")
+	case modeBranches, modeNewBranch:
+		b.WriteString(d.branchesView())
 	case modeList:
 		if d.err != "" {
 			b.WriteString(errorStyle.Render(d.err) + "\n")
@@ -427,4 +530,28 @@ func shortHash(h string) string {
 func firstLine(s string) string {
 	line, _, _ := strings.Cut(s, "\n")
 	return line
+}
+
+func (d dashboard) branchesView() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render(d.loc.T(i18n.MsgTUIBranches)) + "\n")
+	for i, br := range d.branches {
+		mark := "  "
+		if br.Current {
+			mark = "* "
+		}
+		line := mark + br.Name
+		if i == d.bcursor {
+			b.WriteString(cursorStyle.Render("› ") + selectedStyle.Render(line) + "\n")
+		} else {
+			b.WriteString("  " + line + "\n")
+		}
+	}
+	b.WriteString("\n")
+	if d.mode == modeNewBranch {
+		b.WriteString(d.loc.T(i18n.MsgTUINewBranch) + "\n" + d.branchName.View() + "\n")
+		return b.String()
+	}
+	b.WriteString(helpStyle.Render(d.loc.T(i18n.MsgTUIHelpBranches)) + "\n")
+	return b.String()
 }

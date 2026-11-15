@@ -56,8 +56,8 @@ gui: frontend ## bin/gitpal-gui üret (masaüstü arayüzü)
 	CGO_ENABLED=1 CGO_CFLAGS='$(GUI_CFLAGS)' CGO_LDFLAGS='$(GUI_LDFLAGS)' $(GO) build -trimpath -tags '$(GUI_TAGS)' -ldflags '$(LDFLAGS) $(GUI_LINKFLAGS)' -o bin/gitpal-gui ./cmd/gitpal-gui
 
 .PHONY: dmg
-dmg: gui ## macOS: gitpal.app içeren .dmg üret (dist/)
-	sh scripts/package-macos.sh bin/gitpal-gui '$(DMG_VERSION)' '$(DMG)'
+dmg: build gui ## macOS: gitpal.app içeren .dmg üret (dist/)
+	sh scripts/package-macos.sh bin/gitpal-gui bin/gitpal '$(DMG_VERSION)' '$(DMG)'
 
 .PHONY: icons
 icons: ## Logodan uygulama ikonlarını yeniden üret (docs/logo/*.png değişince)

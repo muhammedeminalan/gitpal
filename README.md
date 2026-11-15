@@ -41,6 +41,8 @@ Git güçlüdür ama affetmez: yanlış branch'e atılan bir force push, `reset 
 | **Şeffaflık** | `--explain` (terminal) ve "Komutu göster" (masaüstü) çalışan her git komutunu listeler. `--dry-run` hiçbir şeyi değiştirmeden sonucu gösterir. |
 | **Üç arayüz, tek çekirdek** | Komut satırı, terminalde etkileşimli ekran (TUI) ve masaüstü uygulaması aynı Go çekirdeğini kullanır. |
 | **GitHub** | Repo, pull request, issue, release ve Actions durumu terminalden. |
+| **Yeni başlayana rehber** | `gitpal guide` (Türkçe adıyla `gitpal rehber`) ve masaüstündeki **Yardım** sekmesi: komut örnekleri ve ne yaptıkları yan yana. |
+| **Masaüstünden terminale** | Üst çubuktaki **Terminal** düğmesi sistemin terminalini repo klasöründe açar ve gitpal ana ekranını başlatır. |
 | **Tek dosya** | Kurulum için Go, Python ya da Node gerekmez. Türkçe ve İngilizce arayüz. |
 
 ## Ekran görüntüleri
@@ -186,7 +188,9 @@ gitpal save                 # dosya seç → commit mesajı (AI ya da elle) → 
 gitpal commit -m "fix: ..." # elle commit
 gitpal commit --ai          # AI mesaj önerir, sen seçer/düzenlersin
 gitpal undo                 # gitpal'ın yaptığı son işlemi geri al
+gitpal branch switch        # branch'i listeden seçerek geç
 gitpal gui                  # masaüstü arayüzünü bu repoda aç
+gitpal rehber               # tüm komutlar, örnekleriyle
 ```
 
 Kısa adı `gp`'dir: `gp save`, `gp undo`.
@@ -230,7 +234,7 @@ onay gerekiyordu ama terminal yoktu).
 | Kurtarma | `undo`, `history`, `backups list / restore / prune`, `reflog`, `recover` |
 | Diğer | `stash`, `tag`, `blame`, `remote`, `submodule`, `ignore`, `identity`, `init`, `clone`, `workspace` |
 | GitHub | `repo`, `pr`, `issue`, `release`, `actions` |
-| Araç | `doctor`, `config`, `auth`, `gui`, `completion` |
+| Araç | `doctor`, `config`, `auth`, `gui`, `guide` (`rehber`), `completion` |
 
 ## Güvenlik modeli
 
@@ -284,10 +288,11 @@ bir shell komutuna eklenmez.
 
 | Nerede | Kısayollar |
 |---|---|
-| Terminal ana ekranı (`gitpal`) | `↑/↓` gez · `boşluk` stage · `a` hepsini ekle · `c` commit · `p` push · `l` pull · `f` fetch · `r` yenile · `q` çık |
+| Terminal ana ekranı (`gitpal`) | `↑/↓` gez · `boşluk` stage · `a` hepsini ekle · `c` commit · `p` push · `l` pull · `f` fetch · `b` branch'ler · `r` yenile · `q` çık |
+| Branch listesi (ana ekranda `b`) | `↑/↓` gez · `enter` geç · `n` yeni branch · `esc` geri |
 | Dosya seçici | `↑/↓` gez · `boşluk` seç · `a` hepsi · `n` hiçbiri · `enter` onayla · `q` vazgeç |
 | İnteraktif rebase (`gitpal rebase -i`) | `K/J` taşı · `p` pick · `r` reword · `s` squash · `f` fixup · `d` drop · `enter` başlat · `q` vazgeç |
-| Masaüstü | `Ctrl/Cmd+K` komut paleti · `Ctrl/Cmd+Enter` commit · `s` seçili dosyayı stage / unstage |
+| Masaüstü | `Ctrl/Cmd+K` komut paleti (branch'e geç, yeni branch, Terminal, Yardım dahil) · `Ctrl/Cmd+Enter` commit · `s` seçili dosyayı stage / unstage |
 
 ## Ayarlar
 

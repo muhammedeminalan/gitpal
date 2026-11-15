@@ -91,6 +91,8 @@ jobs:
           # macOS: aynı dosya gitpal.app içinde, .dmg olarak da eklenir.
           if [ "$RUNNER_OS" = "macOS" ]; then
             dmg="gitpal_${v}_macos_arm64.dmg"
-            sh scripts/package-macos.sh '${{ matrix.asset }}' "$v" "$dmg"
+            # Terminal düğmesi için gitpal komut satırı aracı da paketin içine girer.
+            CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X $m.Version=$v -X $m.Commit=${GITHUB_SHA::7}" -o gitpal-cli ./cmd/gitpal
+            sh scripts/package-macos.sh '${{ matrix.asset }}' gitpal-cli "$v" "$dmg"
             gh release upload "$GITHUB_REF_NAME" "$dmg" --clobber
           fi

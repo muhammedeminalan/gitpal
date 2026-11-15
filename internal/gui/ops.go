@@ -175,6 +175,9 @@ func (a *App) Do(r OpRequest, answer Answer) (Outcome, error) {
 		out.Backup = res.Entry.WorktreeBackup
 	}
 	switch op.Kind {
+	case safety.OpSwitch:
+		// Yedeğin ham ref adı yerine nerede olduğunu söyle; yedek Operations'ta görünür.
+		out.Message, out.Backup = i18n.T(a.lang(), i18n.MsgBranchSwitched, r.Branch), ""
 	case safety.OpCommit, safety.OpAmend:
 		subject, _, _ := strings.Cut(r.Message, "\n")
 		out.Message = i18n.T(a.lang(), i18n.MsgCommitDone, short(res.Commit.Hash), subject)

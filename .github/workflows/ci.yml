@@ -115,11 +115,14 @@ jobs:
         run: |
           set -eu
           dmg="$RUNNER_TEMP/gitpal_ci.dmg"
-          sh scripts/package-macos.sh gitpal-gui-bin 0.0.0 "$dmg"
+          CGO_ENABLED=0 go build -o gitpal-cli-bin ./cmd/gitpal
+          sh scripts/package-macos.sh gitpal-gui-bin gitpal-cli-bin 0.0.0 "$dmg"
           mnt="$RUNNER_TEMP/gitpal-dmg"
           mkdir -p "$mnt"
           hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mnt" >/dev/null
           test -x "$mnt/gitpal.app/Contents/MacOS/gitpal-gui"
+          # Terminal düğmesinin çalıştırdığı komut satırı aracı paketin içinde ve çalışıyor.
+          "$mnt/gitpal.app/Contents/MacOS/gitpal" --version
           test -s "$mnt/gitpal.app/Contents/Resources/gitpal.icns"
           test "$(plutil -extract CFBundleIconFile raw "$mnt/gitpal.app/Contents/Info.plist")" = gitpal
           test -L "$mnt/Applications"

@@ -99,3 +99,26 @@ export async function execute(op: OpRequest, approved: boolean, typed: string): 
     await refresh()
   }
 }
+
+// Yeni branch penceresi: soldaki listeden, üst menüden ya da paletten açılır.
+export const branchDialog = $state({ open: false })
+
+// switchBranch, güvenlik katmanından geçerek branch değiştirir (kaydedilmemiş
+// değişiklik varsa önce yedeklenir).
+export function switchBranch(name: string) {
+  return guarded({ kind: 'switch', branch: name })
+}
+
+// createBranch, yeni branch'i açar ve ona geçer. Başarılıysa true döner.
+export async function createBranch(name: string): Promise<boolean> {
+  app.error = ''
+  try {
+    await api.createBranch(name)
+    notify(t('branch.created') + name)
+    await refresh()
+    return true
+  } catch (e) {
+    fail(e)
+    return false
+  }
+}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { app, t, loadInfo, refresh, fail, guarded, notify } from './lib/store.svelte'
-  import { api } from './lib/api'
+  import { app, t, loadInfo, refresh, fail, guarded, notify, branchDialog, switchBranch } from './lib/store.svelte'
+  import { api, type Branch } from './lib/api'
   import Welcome from './components/Welcome.svelte'
   import Sidebar from './components/Sidebar.svelte'
   import Changes from './components/Changes.svelte'
@@ -10,10 +10,21 @@
   import Settings from './components/Settings.svelte'
   import SafetyDialog from './components/SafetyDialog.svelte'
   import Palette from './components/Palette.svelte'
+  import BranchMenu from './components/BranchMenu.svelte'
+  import NewBranchDialog from './components/NewBranchDialog.svelte'
+  import Help from './components/Help.svelte'
 
-  type Tab = 'changes' | 'history' | 'operations' | 'settings'
+  type Tab = 'changes' | 'history' | 'operations' | 'settings' | 'help'
   let tab = $state<Tab>('changes')
   let paletteOpen = $state(false)
+  // Komut paletinde "Branch'e geç: …" satırları için; palet açılınca yüklenir.
+  let paletteBranches = $state<Branch[]>([])
+
+  // Sistemin terminalini bu repoda açar; gitpal ana ekranı kendiliğinden başlar.
+  async function openTerminal() {
+    app.error = ''
+    try { await api.openTerminal() } catch (e) { fail(e) }
+  }
   let ready = $state(false)
 
   onMount(() => {
@@ -31,6 +42,7 @@
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault()
       paletteOpen = !paletteOpen
+      if (paletteOpen && app.root) api.branches().then((b) => (paletteBranches = b)).catch(() => {})
     }
   }
 
@@ -60,6 +72,11 @@
     { label: t('nav.settings'), run: () => (tab = 'settings') },
     { label: t('ops.undo'), run: () => (tab = 'operations') },
     { label: t('nav.switch_repo'), run: () => { app.root = ''; app.state = null } },
+    { label: t('branch.new'), run: () => (branchDialog.open = true) },
+    { label: t('toolbar.terminal'), run: () => openTerminal() },
+    { label: t('nav.help'), run: () => (tab = 'help') },
+    ...paletteBranches.filter((b) => !b.Remote && !b.Current)
+      .map((b) => ({ label: t('palette.switch_to') + b.Name, run: () => switchBranch(b.Name) })),
   ])
 
   const branch = $derived(app.state?.branch)
@@ -77,10 +94,7 @@
       <span class="flex items-center gap-2 font-semibold"><img src="/gitpal-logo.svg" alt="" class="w-6 h-6" />gitpal</span>
       <span class="mono text-zinc-500 truncate" title={app.root}>{app.root.split(/[\\/]/).pop()}</span>
       {#if branch}
-        <span class="mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800">
-          {branch.Detached ? t('status.detached') : branch.Head}
-          {#if app.state?.protected}<span class="text-amber-600"> · {t('status.protected')}</span>{/if}
-        </span>
+        <BranchMenu />
         {#if branch.Unborn}
           <span class="text-zinc-500">{t('status.unborn')}</span>
         {:else if branch.Upstream && !branch.UpstreamGone}
@@ -96,6 +110,7 @@
         <button class="btn" onclick={() => guarded({ kind: 'abort' })}>{t('toolbar.abort')}</button>
       {/if}
       <div class="ml-auto flex gap-2">
+        <button class="btn" title={t('toolbar.terminal_tip')} onclick={openTerminal}>⌨ {t('toolbar.terminal')}</button>
         <button class="btn" disabled={app.busy} onclick={() => sync('fetch')}>{t('toolbar.fetch')}</button>
         <button class="btn" disabled={app.busy} onclick={() => sync('pull')}>{t('toolbar.pull')}</button>
         <button class="btn" disabled={app.busy} onclick={() => sync('push')}>{t('toolbar.push')}</button>
@@ -103,7 +118,7 @@
       </div>
     </header>
     <nav class="flex gap-1 px-3 border-b border-zinc-200 dark:border-zinc-700">
-      {#each [['changes', 'nav.changes'], ['history', 'nav.history'], ['operations', 'nav.operations'], ['settings', 'nav.settings']] as [id, key]}
+      {#each [['changes', 'nav.changes'], ['history', 'nav.history'], ['operations', 'nav.operations'], ['settings', 'nav.settings'], ['help', 'nav.help']] as [id, key]}
         <button class="px-3 py-2 border-b-2 {tab === id ? 'border-blue-600 font-medium' : 'border-transparent text-zinc-500'}"
           onclick={() => (tab = id as Tab)}>{t(key)}</button>
       {/each}
@@ -116,6 +131,8 @@
         <History />
       {:else if tab === 'operations'}
         <Operations />
+      {:else if tab === 'help'}
+        <Help onterminal={openTerminal} />
       {:else}
         <Settings />
       {/if}
@@ -132,6 +149,7 @@
 {/if}
 
 <SafetyDialog />
+<NewBranchDialog />
 {#if paletteOpen}
   <Palette {actions} onclose={() => (paletteOpen = false)} />
 {/if}
