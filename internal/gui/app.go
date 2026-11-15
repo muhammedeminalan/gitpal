@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/muhammedeminalan/gitpal/internal/cmdinstall"
 	"github.com/muhammedeminalan/gitpal/internal/core/ai"
 	"github.com/muhammedeminalan/gitpal/internal/core/config"
 	"github.com/muhammedeminalan/gitpal/internal/core/git"
@@ -25,6 +26,7 @@ import (
 	"github.com/muhammedeminalan/gitpal/internal/core/safety"
 	"github.com/muhammedeminalan/gitpal/internal/core/secrets"
 	"github.com/muhammedeminalan/gitpal/internal/terminal"
+	"github.com/muhammedeminalan/gitpal/internal/update"
 	"github.com/muhammedeminalan/gitpal/internal/version"
 )
 
@@ -41,6 +43,18 @@ type Deps struct {
 	// PickFolder shows the system's folder dialog; "" when the user cancels.
 	// Nil where there is no window (tests).
 	PickFolder func(ctx context.Context) (string, error)
+	// Updates reads gitpal's release list; nil means GitHub.
+	Updates *update.Client
+	// CurrentVersion is this build's version; nil means version.Version.
+	CurrentVersion func() string
+	// GOOS and GOARCH pick the package to download; empty means this system.
+	GOOS, GOARCH string
+	// DownloadDir is where updates are saved; OpenDownload shows the saved file.
+	DownloadDir  func() string
+	OpenDownload func(path string) error
+	// EnsureCommands installs the terminal commands (gitpal, gp) if they are
+	// missing. Nil where there is no installed app (tests).
+	EnsureCommands func() (cmdinstall.Result, error)
 	// OpenTerminal opens the system's terminal in dir and starts gitpal there;
 	// hint is shown when gitpal quits. Nil where there is no window (tests).
 	OpenTerminal func(dir, hint string) error
@@ -57,6 +71,8 @@ type App struct {
 	guard    *safety.Guard
 	cfg      config.Config
 	commands []Command
+	// latest is the release CheckUpdate found; DownloadUpdate downloads it.
+	latest *update.Release
 }
 
 // Command is a git command that ran, for the "show the command" panel.

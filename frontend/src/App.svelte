@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { app, t, loadInfo, refresh, fail, guarded, notify, branchDialog, switchBranch } from './lib/store.svelte'
+  import { app, t, loadInfo, refresh, fail, guarded, notify, branchDialog, switchBranch, updates } from './lib/store.svelte'
   import { api, type Branch } from './lib/api'
   import Welcome from './components/Welcome.svelte'
   import Sidebar from './components/Sidebar.svelte'
@@ -13,6 +13,7 @@
   import BranchMenu from './components/BranchMenu.svelte'
   import NewBranchDialog from './components/NewBranchDialog.svelte'
   import Help from './components/Help.svelte'
+  import UpdateBanner from './components/UpdateBanner.svelte'
 
   type Tab = 'changes' | 'history' | 'operations' | 'settings' | 'help'
   let tab = $state<Tab>('changes')
@@ -29,6 +30,10 @@
 
   onMount(() => {
     loadInfo().then(() => (ready = true)).catch(fail)
+    // Terminal komutları (gitpal, gp) eksikse kurulur; bir şey değiştiyse bir kez söylenir.
+    api.ensureCommands().then((r) => { if (r.changed) notify(r.message, 10000) }).catch(() => {})
+    // Yeni sürüm var mı? Ağ yoksa sessiz kalır; elle denetim Yardım sekmesinde.
+    api.checkUpdate().then((i) => (updates.info = i)).catch(() => {})
     // Keep the view current while the window is in front: the user may run
     // git elsewhere too.
     const timer = setInterval(() => { if (document.hasFocus() && !app.busy) refresh() }, 3000)
@@ -117,6 +122,7 @@
         <button class="btn" title={t('toolbar.palette')} onclick={() => (paletteOpen = true)}>⌘K</button>
       </div>
     </header>
+    <UpdateBanner />
     <nav class="flex gap-1 px-3 border-b border-zinc-200 dark:border-zinc-700">
       {#each [['changes', 'nav.changes'], ['history', 'nav.history'], ['operations', 'nav.operations'], ['settings', 'nav.settings'], ['help', 'nav.help']] as [id, key]}
         <button class="px-3 py-2 border-b-2 {tab === id ? 'border-blue-600 font-medium' : 'border-transparent text-zinc-500'}"
@@ -146,6 +152,11 @@
       <div class="px-3 py-2 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">{app.toast}</div>
     {/if}
   </div>
+{/if}
+
+<!-- Karşılama ekranında da bildirim görünsün (ör. ilk açılıştaki "komutlar kuruldu"). -->
+{#if ready && !app.root && app.toast}
+  <div class="fixed bottom-0 inset-x-0 px-3 py-2 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">{app.toast}</div>
 {/if}
 
 <SafetyDialog />

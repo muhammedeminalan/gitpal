@@ -38,6 +38,12 @@ export interface Stash { Index: number; Ref: string; Message: string }
 export interface Tag { Name: string; Commit: string }
 export interface Remote { Name: string; FetchURL: string }
 export interface Identity { Name: string; Email: string }
+export interface UpdateInfo {
+  enabled: boolean; available: boolean; known: boolean; current: string; latest: string
+  notes: string; page: string; hasPackage: boolean
+}
+export interface Downloaded { path: string; hint: string }
+export interface CommandsResult { changed: boolean; dir: string; message: string }
 export interface GuideEntry { example: string; text: string }
 export interface GuideGroup { title: string; entries: GuideEntry[] }
 
@@ -68,6 +74,9 @@ export const api = {
   pickFolder: () => call<string>('PickFolder'),
   openTerminal: () => call<void>('OpenTerminal'),
   guide: () => call<GuideGroup[]>('Guide'),
+  checkUpdate: () => call<UpdateInfo>('CheckUpdate'),
+  downloadUpdate: () => call<Downloaded>('DownloadUpdate'),
+  ensureCommands: () => call<CommandsResult>('EnsureCommands'),
   stageHunks: (path: string, staged: boolean, hunks: number[]) => call<void>('StageHunks', path, staged, hunks),
   branches: () => call<Branch[]>('Branches'),
   stashes: () => call<Stash[]>('Stashes'),

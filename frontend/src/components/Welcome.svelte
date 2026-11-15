@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { api } from '../lib/api'
   import { app, t, fail } from '../lib/store.svelte'
+  import UpdateBanner from './UpdateBanner.svelte'
 
   let { onopen }: { onopen: (root: string) => void } = $props()
   let recent = $state<string[]>([])
@@ -16,6 +17,7 @@
   }
 </script>
 
+<UpdateBanner />
 <div class="h-full grid place-items-center p-6">
   <div class="w-full max-w-xl space-y-6">
     <div class="flex items-center gap-4">

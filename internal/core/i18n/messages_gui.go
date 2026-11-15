@@ -12,6 +12,15 @@ const (
 	MsgTerminalNoGitpal Key = "gui.err.terminal_no_gitpal"
 	MsgTerminalNotFound Key = "gui.err.terminal_not_found"
 
+	MsgUpdateCheckFailed    Key = "gui.err.update_check_failed"
+	MsgUpdateNoPackage      Key = "gui.err.update_no_package"
+	MsgUpdateNotVerified    Key = "gui.err.update_not_verified"
+	MsgUpdateDownloadFailed Key = "gui.err.update_download_failed"
+	MsgUpdateHintMac        Key = "gui.err.update_hint_mac"
+	MsgUpdateHintWindows    Key = "gui.err.update_hint_windows"
+	MsgUpdateHintLinux      Key = "gui.err.update_hint_linux"
+	MsgCommandsInstalled    Key = "gui.err.commands_installed"
+
 	MsgGUIShort        Key = "cli.gui.short"
 	MsgGUINotInstalled Key = "cli.gui.not_installed"
 )
@@ -32,12 +41,54 @@ var guiMessages = map[Key]message{
 		tr: "Açılacak bir terminal programı bulunamadı. Linux'ta TERMINAL değişkeniyle hangisinin kullanılacağını belirtebilirsin.",
 		en: "No terminal program was found to open. On Linux you can name one with the TERMINAL variable.",
 	},
+	MsgUpdateCheckFailed: {
+		tr: "Güncelleme denetlenemedi. İnternet bağlantını kontrol edip sonra yeniden dene.",
+		en: "Could not check for updates. Check your internet connection and try again later.",
+	},
+	MsgUpdateNoPackage: {
+		tr: "Bu sistem için hazır masaüstü paketi yok. Sürüm sayfasından indirebilirsin: %s",
+		en: "There is no desktop package for this system. You can download it from the release page: %s",
+	},
+	MsgUpdateNotVerified: {
+		tr: "İndirilen dosya yayımlanan sağlama toplamıyla doğrulanamadı, silindi. Sürüm sayfasından elle indirebilirsin: %s",
+		en: "The download could not be verified against its published checksum and was deleted. You can download it from the release page: %s",
+	},
+	MsgUpdateDownloadFailed: {
+		tr: "Güncelleme indirilemedi. Sürüm sayfasından elle indirebilirsin: %s",
+		en: "The update could not be downloaded. You can download it from the release page: %s",
+	},
+	MsgUpdateHintMac: {
+		tr: "İndirildi: %s. Açılan pencerede gitpal'ı Uygulamalar klasörüne sürükle, eskisinin yerine koy; sonra gitpal'ı kapatıp yeniden aç.",
+		en: "Downloaded: %s. In the window that opened, drag gitpal to Applications and replace the old one; then quit and reopen gitpal.",
+	},
+	MsgUpdateHintWindows: {
+		tr: "İndirildi: %s. Zip'i aç, içindekileri gitpal'ın bulunduğu klasöre eskilerin üzerine kopyala; sonra gitpal'ı yeniden aç.",
+		en: "Downloaded: %s. Open the zip and copy its contents over the old ones in gitpal's folder; then reopen gitpal.",
+	},
+	MsgUpdateHintLinux: {
+		tr: "İndirildi: %s. Arşivi aç, gitpal-gui ve gitpal'ı eskilerinin yerine koy; sonra gitpal'ı yeniden aç.",
+		en: "Downloaded: %s. Unpack it, put gitpal-gui and gitpal in place of the old ones; then reopen gitpal.",
+	},
+	MsgCommandsInstalled: {
+		tr: "Terminal komutları kuruldu: gitpal ve gp (%s). Bundan sonra açacağın yeni terminal pencerelerinde çalışır.",
+		en: "Terminal commands installed: gitpal and gp (%s). They work in terminal windows you open from now on.",
+	},
 	MsgGUIShort: {tr: "masaüstü arayüzünü bu repoda aç", en: "open the desktop app on this repository"},
 	MsgGUINotInstalled: {
 		tr: "gitpal-gui bulunamadı. Masaüstü arayüzü ayrı bir programdır: gitpal ile aynı klasöre ya da PATH'e kur.",
 		en: "gitpal-gui was not found. The desktop app is a separate program: install it next to gitpal or on your PATH.",
 	},
 
+	"gui.update.available":     {tr: "Yeni sürüm hazır:", en: "A new version is out:"},
+	"gui.update.current":       {tr: "sendeki", en: "you have"},
+	"gui.update.download":      {tr: "Güncelle", en: "Update"},
+	"gui.update.downloading":   {tr: "İndiriliyor…", en: "Downloading…"},
+	"gui.update.notes":         {tr: "Sürüm notları", en: "Release notes"},
+	"gui.update.later":         {tr: "Sonra", en: "Later"},
+	"gui.update.check":         {tr: "Güncellemeleri denetle", en: "Check for updates"},
+	"gui.update.uptodate":      {tr: "gitpal güncel.", en: "gitpal is up to date."},
+	"gui.update.dev":           {tr: "Geliştirme sürümü kullanıyorsun; son yayımlanan sürüm:", en: "You are running a development build; the latest release is:"},
+	"gui.update.version":       {tr: "Sürüm", en: "Version"},
 	"gui.toolbar.terminal":     {tr: "Terminal", en: "Terminal"},
 	"gui.toolbar.terminal_tip": {tr: "Bu repoda terminal aç; gitpal ana ekranı kendiliğinden başlar", en: "Open a terminal in this repository; gitpal's main screen starts by itself"},
 	"gui.nav.help":             {tr: "Yardım", en: "Help"},

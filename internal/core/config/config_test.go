@@ -61,9 +61,10 @@ func TestLoadWithoutFilesReturnsSpecDefaults(t *testing.T) {
 			BackupRetentionDays: 30,
 			WarnOnSecrets:       true,
 		},
-		Pull:   config.PullConfig{Strategy: config.PullFFOnly},
-		GitHub: config.GitHubConfig{Auth: config.AuthDeviceFlow},
-		UI:     config.UIConfig{Theme: config.ThemeSystem},
+		Pull:    config.PullConfig{Strategy: config.PullFFOnly},
+		GitHub:  config.GitHubConfig{Auth: config.AuthDeviceFlow},
+		UI:      config.UIConfig{Theme: config.ThemeSystem},
+		Updates: config.UpdatesConfig{Check: true},
 	}
 	assert.Equal(t, want, got.Config)
 	assert.False(t, got.GlobalFound)
@@ -96,6 +97,8 @@ ui:
   theme: dark
 workspace:
   repos: [/src/a, /src/b]
+updates:
+  check: false
 `)
 
 	got, err := config.Load(config.LoadOptions{GlobalPath: path})
@@ -120,6 +123,7 @@ workspace:
 		GitHub:    config.GitHubConfig{Auth: config.AuthGHCLI},
 		UI:        config.UIConfig{Theme: config.ThemeDark},
 		Workspace: config.WorkspaceConfig{Repos: []string{"/src/a", "/src/b"}},
+		Updates:   config.UpdatesConfig{Check: false},
 	}
 	assert.Equal(t, want, got.Config)
 	assert.True(t, got.GlobalFound)

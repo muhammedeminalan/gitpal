@@ -1,6 +1,6 @@
 // Shared state of the app: texts, the open repository, the safety dialog and
 // notifications.
-import { api, type Assessment, type OpRequest, type Outcome, type RepoState } from './api'
+import { api, type Assessment, type OpRequest, type Outcome, type RepoState, type UpdateInfo } from './api'
 
 export const app = $state({
   texts: {} as Record<string, string>,
@@ -49,9 +49,9 @@ export function fail(e: unknown) {
   app.error = e instanceof Error ? e.message : String(e)
 }
 
-export function notify(message: string) {
+export function notify(message: string, ms = 4000) {
   app.toast = message
-  setTimeout(() => { if (app.toast === message) app.toast = '' }, 4000)
+  setTimeout(() => { if (app.toast === message) app.toast = '' }, ms)
 }
 
 // The safety dialog: what is being asked, and how it ends.
@@ -121,4 +121,14 @@ export async function createBranch(name: string): Promise<boolean> {
     fail(e)
     return false
   }
+}
+
+// Güncelleme durumu: açılışta bir kez sorulur; şerit buna bakar.
+export const updates = $state({ info: null as UpdateInfo | null, downloading: false, hint: '' })
+
+// openURL, bağlantıyı sistemin tarayıcısında açar (Wails penceresinde runtime ile).
+export function openURL(url: string) {
+  const rt = (window as unknown as { runtime?: { BrowserOpenURL?: (u: string) => void } }).runtime
+  if (rt?.BrowserOpenURL) rt.BrowserOpenURL(url)
+  else window.open(url, '_blank')
 }

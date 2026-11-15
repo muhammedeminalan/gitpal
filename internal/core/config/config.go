@@ -87,6 +87,14 @@ type Config struct {
 	// Workspace is the list of repositories `gitpal workspace` works on
 	// together (spec §4.12).
 	Workspace WorkspaceConfig `mapstructure:"workspace" json:"workspace"`
+	// Updates: the desktop app checks GitHub for a newer release.
+	Updates UpdatesConfig `mapstructure:"updates" json:"updates"`
+}
+
+// UpdatesConfig controls the update check. Only the global file may set it:
+// a repository cannot make the app reach the network.
+type UpdatesConfig struct {
+	Check bool `mapstructure:"check" json:"check"`
 }
 
 // WorkspaceConfig lists the repositories of the workspace.
@@ -150,9 +158,10 @@ func Default() Config {
 			BackupRetentionDays: 30,
 			WarnOnSecrets:       true,
 		},
-		Pull:   PullConfig{Strategy: PullFFOnly},
-		GitHub: GitHubConfig{Auth: AuthDeviceFlow},
-		UI:     UIConfig{Theme: ThemeSystem},
+		Pull:    PullConfig{Strategy: PullFFOnly},
+		GitHub:  GitHubConfig{Auth: AuthDeviceFlow},
+		UI:      UIConfig{Theme: ThemeSystem},
+		Updates: UpdatesConfig{Check: true},
 	}
 }
 

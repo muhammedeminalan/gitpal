@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { api, type GuideGroup } from '../lib/api'
-  import { t, fail, notify } from '../lib/store.svelte'
+  import { app, t, fail, notify, updates } from '../lib/store.svelte'
 
   let { onterminal }: { onterminal: () => void } = $props()
   let groups = $state<GuideGroup[]>([])
@@ -14,6 +14,19 @@
   const shown = $derived(groups
     .map((g) => ({ ...g, entries: g.entries.filter((e) => !q || (e.example + ' ' + e.text).toLocaleLowerCase('tr').includes(q)) }))
     .filter((g) => g.entries.length > 0))
+
+  let checking = $state(false)
+  // Elle denetim: sonuç ne olursa olsun kullanıcıya söylenir.
+  async function checkNow() {
+    checking = true
+    try {
+      const i = await api.checkUpdate()
+      updates.info = i
+      if (i.available) notify(t('update.available') + ' gitpal ' + i.latest)
+      else if (!i.known) notify(t('update.dev') + ' ' + i.latest, 6000)
+      else notify(t('update.uptodate'))
+    } catch (e) { fail(e) } finally { checking = false }
+  }
 
   async function copy(text: string) {
     try {
@@ -34,6 +47,8 @@
       <div class="flex-1">
         <h2 class="text-lg font-semibold">{t('help.title')}</h2>
         <p class="text-zinc-500">{t('help.intro')}</p>
+        <p class="text-xs text-zinc-400 mt-1">{t('update.version')}: {app.version} ·
+          <button class="text-blue-600 hover:underline" disabled={checking} onclick={checkNow}>{t('update.check')}</button></p>
       </div>
       <button class="btn-primary shrink-0" onclick={onterminal}>⌨ {t('toolbar.terminal')}</button>
     </div>
